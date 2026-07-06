@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Original TCG — Commander Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #1a1a2e;
+  --bg-panel: #22223a;
+  --parchment: #eee3cf;
+  --w-color: #c9a86a;
+  --u-color: #4a90c4;
+  --b-color: #7a5ea8;
+  --r-color: #c4553a;
+  --g-color: #5a9e5f;
+  --multi-color: #c9a227;
+  --c-color: #8a8a8a;
+  --land-color: #7d7d63;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg-dark); color: #f0ead6;
+  font-family: 'Inter', system-ui, sans-serif; min-height: 100vh;
+}
+h1, h2, .card-name { font-family: 'Cinzel', Georgia, serif; }
+
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ---------------- Picker screen ---------------- */
+#picker-screen {
+  display: flex; flex-direction: column; align-items: center; padding: 24px; gap: 16px;
+}
+#picker-screen h1 { font-size: 1.6em; margin: 0; }
+#picker-screen p { opacity: 0.8; margin: 0 0 8px 0; text-align: center; max-width: 600px; }
+#commander-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px; max-width: 1000px; width: 100%;
+}
+.pick-card { cursor: pointer; transition: transform 0.15s; }
+.pick-card:hover { transform: translateY(-4px); }
+
+/* ---------------- Card face ---------------- */
+.card-face {
+  width: 140px; min-height: 190px; border-radius: 8px; padding: 6px;
+  background: var(--parchment); color: #2a2418; border: 2px solid #000;
+  display: flex; flex-direction: column; gap: 3px; position: relative;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+.cc-W { border-color: var(--w-color); background: linear-gradient(160deg, #f4ecd8, #e7d9ad); }
+.cc-U { border-color: var(--u-color); background: linear-gradient(160deg, #dcebf5, #b7d7ea); }
+.cc-B { border-color: var(--b-color); background: linear-gradient(160deg, #e2dbee, #c3b3db); }
+.cc-R { border-color: var(--r-color); background: linear-gradient(160deg, #f5ddd4, #eab7a5); }
+.cc-G { border-color: var(--g-color); background: linear-gradient(160deg, #dcebdc, #b7d9b9); }
+.cc-multi { border-color: var(--multi-color); background: linear-gradient(160deg, #f2ecd0, #e0d093); }
+.cc-C { border-color: var(--c-color); background: linear-gradient(160deg, #e6e6e6, #cfcfcf); }
+.cc-land { border-color: var(--land-color); background: linear-gradient(160deg, #ded9c4, #c7c0a3); }
+
+.card-title-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.68em; font-weight: 700; gap: 4px; }
+.card-name { flex: 1; line-height: 1.1; }
+.card-cost { white-space: nowrap; font-size: 0.9em; }
+.legend-star { color: #a9820a; margin-right: 2px; }
+.card-art { background: #f6efd9; border: 1px solid #00000030; border-radius: 4px; overflow: hidden; height: 62px; }
+.card-art svg { width: 100%; height: 100%; display: block; }
+.card-type { font-size: 0.6em; font-style: italic; opacity: 0.85; }
+.card-text { font-size: 0.58em; line-height: 1.25; flex: 1; }
+.card-keywords { display: flex; flex-wrap: wrap; gap: 2px; }
+.kw-tag {
+  font-size: 0.52em; background: #00000018; border-radius: 3px; padding: 1px 4px;
+  cursor: help; border: 1px solid #00000030;
+}
+.pt-box {
+  position: absolute; bottom: 4px; right: 6px; background: #1a1a1a; color: #fff;
+  font-size: 0.68em; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+}
+
+/* Permanents on battlefield */
+.perm { width: 110px; min-height: 150px; }
+.perm .card-art { height: 48px; }
+.perm.tapped { transform: rotate(12deg); opacity: 0.85; }
+.perm.sick { filter: grayscale(35%); }
+.perm.is-commander { box-shadow: 0 0 0 3px gold; }
+.perm.selectable { cursor: pointer; box-shadow: 0 0 0 2px #6cf; }
+.perm.selectable:hover { box-shadow: 0 0 0 3px #9df; }
+.perm.selected { box-shadow: 0 0 0 3px #ff5252 !important; }
+
+/* ---------------- Game screen ---------------- */
+#game-screen { display: none; flex-direction: column; flex: 1; padding: 10px; gap: 8px; }
+.player-panel { background: var(--bg-panel); border-radius: 8px; padding: 8px; }
+.panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-weight: 700; }
+.life-badge { background: #c0392b; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 0.95em; }
+.zone-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; min-height: 100px; }
+.zone-label { font-size: 0.7em; text-transform: uppercase; opacity: 0.6; margin-bottom: 2px; }
+.cz-wrap { position: relative; }
+.cz-wrap.castable { cursor: pointer; box-shadow: 0 0 0 2px #6cf; border-radius: 8px; }
+.cz-cost { font-size: 0.6em; text-align: center; opacity: 0.8; margin-top: 2px; }
+
+#phase-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #10101c; padding: 8px 14px; border-radius: 8px; font-size: 0.9em;
+}
+.turn-label { font-weight: 700; }
+.phase-label { text-transform: capitalize; opacity: 0.8; }
+
+#action-buttons { display: flex; justify-content: center; }
+#action-buttons button {
+  background: #c9a227; color: #1a1a1a; font-weight: 700; border: none;
+  padding: 10px 28px; border-radius: 20px; cursor: pointer; font-size: 1em;
+}
+#action-buttons button:disabled { background: #555; color: #aaa; cursor: default; }
+
+#human-hand { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0; }
+.hand-card { cursor: default; }
+.hand-card.castable { cursor: pointer; box-shadow: 0 0 0 2px #6cf; border-radius: 8px; }
+
+#human-manapool { min-height: 20px; font-size: 0.85em; }
+.mana-pip { padding: 2px 8px; border-radius: 10px; background: #333; margin-right: 4px; }
+.mana-empty { opacity: 0.5; }
+
+#log { background: #0d0d16; border-radius: 8px; padding: 6px 10px; height: 90px; overflow-y: auto; font-size: 0.78em; }
+.log-line { padding: 1px 0; border-bottom: 1px solid #ffffff10; }
+
+#gameover-screen {
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; gap: 16px;
+}
+#gameover-screen button {
+  background: #c9a227; color: #1a1a1a; font-weight: 700; border: none;
+  padding: 10px 28px; border-radius: 20px; cursor: pointer; font-size: 1em;
+}
+
+/* ---------------- Import panel ---------------- */
+.import-panel {
+  max-width: 640px; width: 100%; background: var(--bg-panel); border-radius: 10px;
+  padding: 16px 20px; margin-top: 12px;
+}
+.import-panel h2 { font-size: 1.1em; margin: 0 0 6px 0; }
+.import-panel p { font-size: 0.85em; opacity: 0.85; line-height: 1.4; }
+#import-textarea {
+  width: 100%; min-height: 120px; background: #10101c; color: #eee;
+  border: 1px solid #444; border-radius: 6px; padding: 8px; font-family: monospace;
+  font-size: 0.85em; resize: vertical;
+}
+.import-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.import-row button, #import-start-btn {
+  background: #c9a227; color: #1a1a1a; font-weight: 700; border: none;
+  padding: 8px 18px; border-radius: 16px; cursor: pointer; font-size: 0.9em;
+}
+#import-status { font-size: 0.82em; opacity: 0.85; }
+#import-start-btn { margin-top: 10px; }
+#import-commander-picker .pick-card.selected { box-shadow: 0 0 0 3px #ff5252; border-radius: 8px; }
+
+.card-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.art-fallback {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  font-size: 0.55em; opacity: 0.6; text-align: center; padding: 4px;
+}
+.imported-card .card-art { height: auto; aspect-ratio: 5/7; }
+.perm.imported-card .card-art { height: auto; }
+
+/* ---------------- Picker toolbar / status ---------------- */
+.picker-toolbar { display: flex; gap: 10px; margin-bottom: 4px; }
+.picker-toolbar button, .glossary-btn {
+  background: #333; color: #eee; border: 1px solid #555; border-radius: 14px;
+  padding: 6px 16px; cursor: pointer; font-size: 0.85em;
+}
+.status-line { font-size: 0.8em; opacity: 0.75; margin: 4px 0; }
+#import-save-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+#import-save-row input {
+  background: #10101c; color: #eee; border: 1px solid #444; border-radius: 6px;
+  padding: 6px 10px; font-size: 0.85em; flex: 1;
+}
+#import-save-row button {
+  background: #4a90c4; color: #fff; border: none; border-radius: 14px;
+  padding: 6px 14px; cursor: pointer; font-size: 0.85em;
+}
+
+/* ---------------- Saved Decks (Moxfield-style tiles) ---------------- */
+#saveddecks-screen {
+  display: none; flex-direction: column; padding: 24px; gap: 16px; max-width: 1100px; margin: 0 auto; width: 100%;
+}
+.saveddecks-header { display: flex; justify-content: space-between; align-items: center; }
+.saveddecks-header button {
+  background: #333; color: #eee; border: 1px solid #555; border-radius: 14px;
+  padding: 6px 16px; cursor: pointer;
+}
+.deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.empty-msg { opacity: 0.7; }
+.deck-tile {
+  background: var(--bg-panel); border-radius: 10px; overflow: hidden;
+  border: 1px solid #ffffff15; display: flex; flex-direction: column;
+}
+.deck-banner { height: 120px; background: #10101c; overflow: hidden; }
+.deck-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.deck-tile-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.deck-tile-name { font-weight: 700; font-size: 1em; }
+.deck-tile-commander { font-size: 0.8em; opacity: 0.8; font-style: italic; }
+.deck-tile-pips { display: flex; gap: 4px; }
+.id-pip {
+  width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 0.6em; font-weight: 700; color: #1a1a1a;
+}
+.pip-W { background: var(--w-color); } .pip-U { background: var(--u-color); color: #fff; }
+.pip-B { background: var(--b-color); color: #fff; } .pip-R { background: var(--r-color); }
+.pip-G { background: var(--g-color); }
+.deck-tile-meta { font-size: 0.75em; opacity: 0.6; }
+.deck-tile-actions { display: flex; gap: 8px; margin-top: 6px; }
+.deck-tile-actions button {
+  flex: 1; border: none; border-radius: 12px; padding: 6px 0; cursor: pointer; font-size: 0.82em; font-weight: 600;
+}
+.deck-play-btn { background: #c9a227; color: #1a1a1a; }
+.deck-delete-btn { background: #5a2a2a; color: #eee; }
+
+/* ---------------- Keyword Glossary Modal ---------------- */
+#keyword-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+}
+.kw-modal-box {
+  background: var(--bg-panel); border-radius: 10px; padding: 20px; max-width: 560px;
+  width: 100%; max-height: 80vh; overflow-y: auto;
+}
+.kw-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.kw-modal-header button {
+  background: #333; color: #eee; border: 1px solid #555; border-radius: 12px;
+  padding: 4px 14px; cursor: pointer;
+}
+.kw-entry { padding: 8px 0; border-bottom: 1px solid #ffffff15; }
+.kw-entry-name { font-weight: 700; color: #d8c98f; }
+.kw-entry-rule { font-size: 0.88em; opacity: 0.9; margin-top: 2px; }
+
+/* ---------------- Favorites ---------------- */
+.pick-card { position: relative; }
+.fav-star {
+  position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); color: #888;
+  border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer;
+  font-size: 0.95em; line-height: 1; z-index: 5;
+}
+.fav-star.faved { color: #ffd54a; }
+.commander-grid-inner {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+}
+
+/* ---------------- Loading overlay ---------------- */
+#loading-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(10,10,18,0.88);
+  align-items: center; justify-content: center; z-index: 2000;
+}
+.loading-box { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.spinner {
+  width: 40px; height: 40px; border: 4px solid #444; border-top-color: #c9a227;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-msg { font-size: 0.95em; opacity: 0.9; text-align: center; max-width: 320px; }
+
+
+
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="picker-screen">
+    <h1>Choose Your Commander</h1>
+    <p>Pick a legendary creature to lead your deck. A 99-card singleton deck will be auto-built around its color identity from this project's original card pool, and the bot will pick a commander of its own.</p>
+    <div class="picker-toolbar">
+      <button onclick="showSavedDecksScreen()">My Decks</button>
+      <button onclick="toggleKeywordModal(true)">Keyword Glossary</button>
+    </div>
+    <p id="picker-status" class="status-line"></p>
+    <div id="commander-grid"></div>
+
+    <div class="import-panel">
+      <h2>Or import your own decklist</h2>
+      <p>Paste a decklist exported from Moxfield, Archidekt, or MTGO (plain text, one card per line, e.g. "1 Sol Ring"). Card data and art are fetched live from <a href="https://scryfall.com" target="_blank" style="color:#9cf;">Scryfall's</a> public API. If your export has a "Commander" section, it'll be used automatically — otherwise you'll be asked to pick one from the list.</p>
+      <textarea id="import-textarea" placeholder="Commander&#10;1 Atraxa, Praetors' Voice&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Command Tower&#10;..."></textarea>
+      <div class="import-row">
+        <button onclick="handleImportSubmit()">Fetch from Scryfall</button>
+        <span id="import-status"></span>
+      </div>
+      <div id="import-commander-picker"></div>
+      <div id="import-save-row" style="display:none;">
+        <input type="text" id="save-deck-name" placeholder="Name this deck…"/>
+        <button onclick="handleSaveImportedDeck()">Save to My Decks</button>
+      </div>
+      <button id="import-start-btn" style="display:none;" onclick="startImportedGame()">Start Game with This Deck</button>
+    </div>
+  </div>
+
+  <div id="saveddecks-screen">
+    <div class="saveddecks-header">
+      <h1>My Decks</h1>
+      <button onclick="showScreen('picker')">Back</button>
+    </div>
+    <div id="saved-decks-grid" class="deck-grid"></div>
+
+    <h1>Favorite Commanders</h1>
+    <div id="favorites-grid" class="commander-grid-inner"></div>
+  </div>
+
+  <div id="game-screen">
+    <div class="player-panel">
+      <div class="panel-header">
+        <span>Bot</span>
+        <span class="life-badge" id="bot-life">40</span>
+      </div>
+      <div class="zone-label">Command Zone</div>
+      <div class="zone-row" id="bot-commandzone"></div>
+      <div class="zone-label">Battlefield</div>
+      <div class="zone-row" id="bot-battlefield"></div>
+    </div>
+
+    <div id="phase-bar">
+      <button class="glossary-btn" onclick="toggleKeywordModal(true)">Glossary</button>
+    </div>
+    <div id="log"></div>
+    <div id="action-buttons"></div>
+
+    <div class="player-panel">
+      <div class="panel-header">
+        <span>You</span>
+        <span class="life-badge" id="human-life">40</span>
+        <span id="human-manapool"></span>
+      </div>
+      <div class="zone-label">Command Zone</div>
+      <div class="zone-row" id="human-commandzone"></div>
+      <div class="zone-label">Battlefield</div>
+      <div class="zone-row" id="human-battlefield"></div>
+      <div class="zone-label">Hand</div>
+      <div id="human-hand"></div>
+    </div>
+  </div>
+
+  <div id="gameover-screen">
+    <h2 id="gameover-text"></h2>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+
+  <div id="keyword-modal">
+    <div class="kw-modal-box">
+      <div class="kw-modal-header">
+        <h2>Keyword Glossary</h2>
+        <button onclick="toggleKeywordModal(false)">Close</button>
+      </div>
+      <div id="keyword-list"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ============================================================
+// KEYWORD DICTIONARY
+// Single source of truth for what each keyword does.
+// Both the UI (tooltips) and the rules engine read from this.
+// ============================================================
+const KEYWORDS = {
+  Flying: {
+    summary: "Can only be blocked by creatures with flying or reach.",
+    rule: "A creature with flying can't be blocked except by creatures with flying or reach."
+  },
+  Reach: {
+    summary: "Can block creatures with flying.",
+    rule: "A creature with reach can block creatures with flying, in addition to normal blocking."
+  },
+  Trample: {
+    summary: "Excess combat damage goes to the defending player.",
+    rule: "If this creature would deal enough damage to destroy all creatures blocking it, you may assign the rest of that damage to the player or planeswalker it's attacking."
+  },
+  "First Strike": {
+    summary: "Deals combat damage before creatures without first strike.",
+    rule: "This creature deals its combat damage in a separate, earlier combat damage step, before creatures without first strike."
+  },
+  Deathtouch: {
+    summary: "Any amount of damage from this creature is lethal.",
+    rule: "Any nonzero amount of damage this creature deals to a creature is enough to destroy it."
+  },
+  Lifelink: {
+    summary: "Damage dealt by this creature also gains you that much life.",
+    rule: "Damage dealt by this creature also causes its controller to gain that much life."
+  },
+  Vigilance: {
+    summary: "Attacking doesn't cause this creature to tap.",
+    rule: "This creature doesn't tap when it attacks, so it can still block next turn."
+  },
+  Menace: {
+    summary: "Can't be blocked except by two or more creatures.",
+    rule: "This creature can't be blocked unless the defending player assigns at least two creatures to block it."
+  },
+  Haste: {
+    summary: "Can attack and tap the turn it enters the battlefield.",
+    rule: "This creature ignores 'summoning sickness' — it can attack or use tap abilities immediately."
+  },
+  "Double Strike": {
+    summary: "Deals combat damage in both the first-strike and regular steps.",
+    rule: "This creature deals combat damage twice: once in the first strike step, and again in the regular damage step."
+  },
+  Defender: {
+    summary: "Can't attack.",
+    rule: "A creature with defender can't attack."
+  },
+  Hexproof: {
+    summary: "Can't be targeted by opponents' spells or abilities.",
+    rule: "This creature can't be the target of spells or abilities your opponents control."
+  },
+  Indestructible: {
+    summary: "Can't be destroyed by damage or 'destroy' effects.",
+    rule: "Lethal damage and effects that say 'destroy' don't destroy this creature."
+  },
+  Flash: {
+    summary: "Can be cast any time you could cast an instant.",
+    rule: "You may cast this spell as though it had flash, any time you have priority."
+  }
+};
+
+// ============================================================
+// STARTER CARD POOL — batch 1
+// Original names, rules text, and stats. Illustrations are
+// original SVG line-art (see art.js), not reproductions of any
+// published artwork.
+// ============================================================
+const CARDS = [
+  // ---------------- WHITE ----------------
+  {
+    id: "w01", name: "Dawnwatch Sentinel", cost: { W: 1, generic: 1 }, type: "Creature — Human Soldier",
+    pt: { power: 2, toughness: 3 }, keywords: ["Vigilance"], text: "Vigilance.",
+    art: "soldier", color: "W", rarity: "common"
+  },
+  {
+    id: "w02", name: "Gleaming Chorister", cost: { W: 1 }, type: "Creature — Spirit",
+    pt: { power: 1, toughness: 1 }, keywords: ["Flying"], text: "Flying.",
+    art: "spirit", color: "W", rarity: "common"
+  },
+  {
+    id: "w03", name: "Bastion of the Meek", cost: { W: 2, generic: 1 }, type: "Creature — Human Cleric",
+    pt: { power: 2, toughness: 4 }, keywords: [], text: "Other creatures you control get +0/+1.",
+    static: { type: "anthem_toughness", amount: 1 }, art: "cleric", color: "W", rarity: "uncommon"
+  },
+  {
+    id: "w04", name: "Radiant Judgment", cost: { W: 1, generic: 2 }, type: "Instant",
+    text: "Destroy target tapped creature.", effect: { type: "destroy", condition: "tapped" },
+    art: "spell_light", color: "W", rarity: "common"
+  },
+  {
+    id: "w05", name: "Skyward Oath", cost: { W: 1 }, type: "Sorcery",
+    text: "Target creature gains flying until end of turn.", effect: { type: "grant_keyword", keyword: "Flying", duration: "turn" },
+    art: "spell_light", color: "W", rarity: "common"
+  },
+  {
+    id: "w06", name: "Cathedral Guardian", cost: { W: 3, generic: 2 }, type: "Creature — Angel",
+    pt: { power: 3, toughness: 4 }, keywords: ["Flying", "Lifelink"], text: "Flying, lifelink.",
+    art: "angel", color: "W", rarity: "rare"
+  },
+
+  // ---------------- BLUE ----------------
+  {
+    id: "u01", name: "Tidepool Analyst", cost: { U: 1 }, type: "Creature — Human Wizard",
+    pt: { power: 1, toughness: 2 }, keywords: [], text: "When this creature enters, draw a card, then discard a card.",
+    trigger: { on: "enter", effect: "loot" }, art: "wizard", color: "U", rarity: "common"
+  },
+  {
+    id: "u02", name: "Current-Riding Serpent", cost: { U: 3, generic: 2 }, type: "Creature — Serpent",
+    pt: { power: 4, toughness: 4 }, keywords: ["Flying"], text: "Flying. (Its fins catch the wind off the water.)",
+    art: "serpent", color: "U", rarity: "uncommon"
+  },
+  {
+    id: "u03", name: "Mistral Screen", cost: { U: 1, generic: 1 }, type: "Instant",
+    text: "Counter target spell unless its controller pays {2}.", effect: { type: "counter_unless_pay", amount: 2 },
+    art: "spell_water", color: "U", rarity: "common"
+  },
+  {
+    id: "u04", name: "Depths Reclaimed", cost: { U: 2, generic: 1 }, type: "Sorcery",
+    text: "Return target creature to its owner's hand.", effect: { type: "bounce" },
+    art: "spell_water", color: "U", rarity: "common"
+  },
+  {
+    id: "u05", name: "Harbor Seer", cost: { U: 2 }, type: "Creature — Merfolk",
+    pt: { power: 1, toughness: 3 }, keywords: ["Reach"], text: "Reach. (Can block flyers.)",
+    art: "merfolk", color: "U", rarity: "common"
+  },
+  {
+    id: "u06", name: "Archive of the Tide King", cost: { U: 4, generic: 2 }, type: "Creature — Leviathan",
+    pt: { power: 6, toughness: 6 }, keywords: ["Hexproof"], text: "Hexproof.",
+    art: "leviathan", color: "U", rarity: "rare"
+  },
+
+  // ---------------- BLACK ----------------
+  {
+    id: "b01", name: "Charnel Whisperer", cost: { B: 1 }, type: "Creature — Zombie",
+    pt: { power: 2, toughness: 1 }, keywords: [], text: "When this creature dies, each opponent loses 1 life.",
+    trigger: { on: "death", effect: "drain1" }, art: "zombie", color: "B", rarity: "common"
+  },
+  {
+    id: "b02", name: "Grave Contract", cost: { B: 1, generic: 1 }, type: "Instant",
+    text: "Target creature gets -3/-3 until end of turn.", effect: { type: "pump", power: -3, toughness: -3 },
+    art: "spell_dark", color: "B", rarity: "common"
+  },
+  {
+    id: "b03", name: "Bloodfeast Bat", cost: { B: 2 }, type: "Creature — Bat",
+    pt: { power: 2, toughness: 2 }, keywords: ["Flying", "Lifelink"], text: "Flying, lifelink.",
+    art: "bat", color: "B", rarity: "common"
+  },
+  {
+    id: "b04", name: "Plague of Nightmares", cost: { B: 2, generic: 2 }, type: "Sorcery",
+    text: "Each player discards two cards.", effect: { type: "discard_all", amount: 2 },
+    art: "spell_dark", color: "B", rarity: "uncommon"
+  },
+  {
+    id: "b05", name: "Venom-Fang Adept", cost: { B: 2, generic: 1 }, type: "Creature — Human Assassin",
+    pt: { power: 2, toughness: 2 }, keywords: ["Deathtouch"], text: "Deathtouch.",
+    art: "assassin", color: "B", rarity: "common"
+  },
+  {
+    id: "b06", name: "The Devourer Below", cost: { B: 4, generic: 2 }, type: "Creature — Horror",
+    pt: { power: 5, toughness: 5 }, keywords: ["Menace"], text: "Menace. When this creature enters, target opponent loses 2 life and you gain 2 life.",
+    trigger: { on: "enter", effect: "drain2" }, art: "horror", color: "B", rarity: "rare"
+  },
+
+  // ---------------- RED ----------------
+  {
+    id: "r01", name: "Cinder Skirmisher", cost: { R: 1 }, type: "Creature — Goblin",
+    pt: { power: 2, toughness: 1 }, keywords: ["Haste"], text: "Haste.",
+    art: "goblin", color: "R", rarity: "common"
+  },
+  {
+    id: "r02", name: "Firebrand Bolt", cost: { R: 1 }, type: "Instant",
+    text: "Deal 3 damage to any target.", effect: { type: "damage", amount: 3 },
+    art: "spell_fire", color: "R", rarity: "common"
+  },
+  {
+    id: "r03", name: "Ashfall Drake", cost: { R: 3, generic: 1 }, type: "Creature — Drake",
+    pt: { power: 3, toughness: 3 }, keywords: ["Flying"], text: "Flying.",
+    art: "drake", color: "R", rarity: "common"
+  },
+  {
+    id: "r04", name: "Warcamp Rally", cost: { R: 1, generic: 1 }, type: "Sorcery",
+    text: "Creatures you control get +2/+0 until end of turn.", effect: { type: "team_pump", power: 2, toughness: 0 },
+    art: "spell_fire", color: "R", rarity: "uncommon"
+  },
+  {
+    id: "r05", name: "Doubleblade Berserker", cost: { R: 2, generic: 1 }, type: "Creature — Human Warrior",
+    pt: { power: 2, toughness: 2 }, keywords: ["Double Strike"], text: "Double strike.",
+    art: "warrior", color: "R", rarity: "uncommon"
+  },
+  {
+    id: "r06", name: "Molten Colossus", cost: { R: 4, generic: 3 }, type: "Creature — Giant",
+    pt: { power: 7, toughness: 5 }, keywords: ["Trample"], text: "Trample.",
+    art: "giant", color: "R", rarity: "rare"
+  },
+
+  // ---------------- GREEN ----------------
+  {
+    id: "g01", name: "Thicket Strider", cost: { G: 1 }, type: "Creature — Elf Scout",
+    pt: { power: 1, toughness: 1 }, keywords: [], text: "When this creature enters, search your library for a basic land, put it onto the battlefield tapped, then shuffle.",
+    trigger: { on: "enter", effect: "ramp1" }, art: "elf", color: "G", rarity: "common"
+  },
+  {
+    id: "g02", name: "Ironhide Boar", cost: { G: 2, generic: 1 }, type: "Creature — Boar",
+    pt: { power: 4, toughness: 4 }, keywords: [], text: "(A sturdy beast.)",
+    art: "boar", color: "G", rarity: "common"
+  },
+  {
+    id: "g03", name: "Wild Growth Ritual", cost: { G: 1 }, type: "Sorcery",
+    text: "Search your library for a basic land and put it onto the battlefield tapped, then shuffle.",
+    effect: { type: "ramp", amount: 1 }, art: "spell_nature", color: "G", rarity: "common"
+  },
+  {
+    id: "g04", name: "Canopy Longstrider", cost: { G: 3, generic: 2 }, type: "Creature — Beast",
+    pt: { power: 5, toughness: 5 }, keywords: ["Trample", "Reach"], text: "Trample, reach.",
+    art: "beast", color: "G", rarity: "uncommon"
+  },
+  {
+    id: "g05", name: "Verdant Bloom", cost: { G: 1, generic: 1 }, type: "Instant",
+    text: "Target creature gets +3/+3 until end of turn.", effect: { type: "pump", power: 3, toughness: 3 },
+    art: "spell_nature", color: "G", rarity: "common"
+  },
+  {
+    id: "g06", name: "Worldroot Ancient", cost: { G: 5, generic: 2 }, type: "Creature — Treefolk",
+    pt: { power: 6, toughness: 8 }, keywords: ["Indestructible"], text: "Indestructible.",
+    art: "treefolk", color: "G", rarity: "rare"
+  },
+
+  // ---------------- LEGENDARY COMMANDERS (mono-color) ----------------
+  {
+    id: "w07", name: "Seraphine, Voice of Judgment", cost: { W: 1, generic: 3 }, type: "Legendary Creature — Angel Cleric",
+    pt: { power: 4, toughness: 4 }, keywords: ["Flying", "Vigilance"], legendary: true,
+    text: "Flying, vigilance. Whenever another creature you control enters, you gain 1 life.",
+    trigger: { on: "other_enter", effect: "gain1" }, art: "angel", color: "W", rarity: "mythic"
+  },
+  {
+    id: "w08", name: "Ardenvale, First Warden", cost: { W: 2, generic: 2 }, type: "Legendary Creature — Human Knight",
+    pt: { power: 3, toughness: 5 }, keywords: ["Vigilance"], legendary: true,
+    text: "Vigilance. Other creatures you control get +0/+1.",
+    static: { type: "anthem_toughness", amount: 1 }, art: "soldier", color: "W", rarity: "rare"
+  },
+  {
+    id: "u07", name: "Thessia, Archive Keeper", cost: { U: 2, generic: 3 }, type: "Legendary Creature — Human Wizard",
+    pt: { power: 3, toughness: 4 }, keywords: [], legendary: true,
+    text: "At the beginning of your upkeep, draw a card.",
+    trigger: { on: "upkeep", effect: "draw1" }, art: "wizard", color: "U", rarity: "mythic"
+  },
+  {
+    id: "u08", name: "Coilspire Warden", cost: { U: 3, generic: 2 }, type: "Legendary Creature — Serpent",
+    pt: { power: 4, toughness: 5 }, keywords: ["Flying", "Hexproof"], legendary: true,
+    text: "Flying, hexproof.", art: "serpent", color: "U", rarity: "rare"
+  },
+  {
+    id: "b07", name: "Mordrath, Grave Tyrant", cost: { B: 2, generic: 3 }, type: "Legendary Creature — Zombie Warlock",
+    pt: { power: 4, toughness: 4 }, keywords: [], legendary: true,
+    text: "Whenever a creature you control dies, each opponent loses 1 life.",
+    trigger: { on: "any_death", effect: "drain1" }, art: "zombie", color: "B", rarity: "mythic"
+  },
+  {
+    id: "b08", name: "Vessa, Nightblade Assassin", cost: { B: 3, generic: 1 }, type: "Legendary Creature — Human Assassin",
+    pt: { power: 3, toughness: 3 }, keywords: ["Deathtouch", "Menace"], legendary: true,
+    text: "Deathtouch, menace.", art: "assassin", color: "B", rarity: "rare"
+  },
+  {
+    id: "r07", name: "Kazrek, Flameborn Khan", cost: { R: 2, generic: 3 }, type: "Legendary Creature — Goblin Warrior",
+    pt: { power: 5, toughness: 4 }, keywords: ["Haste"], legendary: true,
+    text: "Haste. Other creatures you control get +1/+0.",
+    static: { type: "anthem_power", amount: 1 }, art: "goblin", color: "R", rarity: "mythic"
+  },
+  {
+    id: "r08", name: "Skyraider, Ember-Wing Drake", cost: { R: 3, generic: 2 }, type: "Legendary Creature — Drake",
+    pt: { power: 4, toughness: 4 }, keywords: ["Flying", "Trample"], legendary: true,
+    text: "Flying, trample.", art: "drake", color: "R", rarity: "rare"
+  },
+  {
+    id: "g07", name: "Thornmantle, World Warden", cost: { G: 2, generic: 3 }, type: "Legendary Creature — Treefolk Druid",
+    pt: { power: 4, toughness: 6 }, keywords: [], legendary: true,
+    text: "At the beginning of your upkeep, search your library for a basic land, put it onto the battlefield tapped, then shuffle.",
+    trigger: { on: "upkeep", effect: "ramp1" }, art: "treefolk", color: "G", rarity: "mythic"
+  },
+  {
+    id: "g08", name: "Yenna, Beastcaller", cost: { G: 3, generic: 2 }, type: "Legendary Creature — Elf Shaman",
+    pt: { power: 3, toughness: 5 }, keywords: ["Reach"], legendary: true,
+    text: "Reach. Other creatures you control get +1/+1.",
+    static: { type: "anthem_both", amount: 1 }, art: "elf", color: "G", rarity: "mythic"
+  },
+
+  // ---------------- LEGENDARY COMMANDERS (multicolor / guild) ----------------
+  {
+    id: "m01", name: "Ilya and Voss, Bound in Oath", cost: { W: 1, U: 1, generic: 2 }, type: "Legendary Creature — Human Wizard",
+    pt: { power: 3, toughness: 4 }, keywords: ["Flying"], legendary: true,
+    text: "Flying. Whenever you cast an instant or sorcery spell, draw a card.",
+    trigger: { on: "cast_instant_sorcery", effect: "draw1" }, art: "wizard", color: "multi", colorIdentity: ["W", "U"], rarity: "mythic"
+  },
+  {
+    id: "m02", name: "Kessandra, Doomwhisper", cost: { U: 1, B: 1, generic: 2 }, type: "Legendary Creature — Human Rogue",
+    pt: { power: 3, toughness: 3 }, keywords: ["Deathtouch"], legendary: true,
+    text: "Deathtouch. Whenever an opponent discards a card, draw a card.",
+    trigger: { on: "opp_discard", effect: "draw1" }, art: "assassin", color: "multi", colorIdentity: ["U", "B"], rarity: "mythic"
+  },
+  {
+    id: "m03", name: "Ragnor Emberclaw", cost: { B: 1, R: 1, generic: 2 }, type: "Legendary Creature — Devil",
+    pt: { power: 4, toughness: 3 }, keywords: ["Haste", "Menace"], legendary: true,
+    text: "Haste, menace.", art: "horror", color: "multi", colorIdentity: ["B", "R"], rarity: "rare"
+  },
+  {
+    id: "m04", name: "Sythera, Wild Tempest", cost: { R: 1, G: 1, generic: 2 }, type: "Legendary Creature — Giant Shaman",
+    pt: { power: 5, toughness: 5 }, keywords: ["Trample"], legendary: true,
+    text: "Trample. Whenever this creature attacks, it gets +1/+1 until end of turn.",
+    trigger: { on: "attack", effect: "selfpump1" }, art: "giant", color: "multi", colorIdentity: ["R", "G"], rarity: "rare"
+  },
+  {
+    id: "m05", name: "Corintha, Verdant Warden", cost: { G: 1, W: 1, generic: 2 }, type: "Legendary Creature — Human Cleric",
+    pt: { power: 3, toughness: 5 }, keywords: ["Vigilance"], legendary: true,
+    text: "Vigilance. Other creatures you control get +1/+1.",
+    static: { type: "anthem_both", amount: 1 }, art: "cleric", color: "multi", colorIdentity: ["G", "W"], rarity: "mythic"
+  },
+
+  // ---------------- STAPLES: removal / draw / ramp (batch 2) ----------------
+  {
+    id: "w09", name: "Radiant Banishment", cost: { W: 1, generic: 1 }, type: "Instant",
+    text: "Exile target tapped creature.", effect: { type: "exile", condition: "tapped" },
+    art: "spell_light", color: "W", rarity: "common"
+  },
+  {
+    id: "w10", name: "Silverwing Squire", cost: { W: 2 }, type: "Creature — Human Knight",
+    pt: { power: 2, toughness: 2 }, keywords: ["Flying"], text: "Flying.",
+    art: "spirit", color: "W", rarity: "common"
+  },
+  {
+    id: "w11", name: "Blessed Reprieve", cost: { W: 1, generic: 1 }, type: "Instant",
+    text: "Prevent all damage that would be dealt to target creature this turn.",
+    effect: { type: "prevent_damage" }, art: "spell_light", color: "W", rarity: "common"
+  },
+  {
+    id: "u09", name: "Tidal Insight", cost: { U: 2 }, type: "Sorcery",
+    text: "Draw two cards.", effect: { type: "draw", amount: 2 }, art: "spell_water", color: "U", rarity: "common"
+  },
+  {
+    id: "u10", name: "Undertow Grasp", cost: { U: 2, generic: 1 }, type: "Instant",
+    text: "Return target creature to its owner's hand. Draw a card.",
+    effect: { type: "bounce_draw" }, art: "spell_water", color: "U", rarity: "uncommon"
+  },
+  {
+    id: "u11", name: "Whitecap Skimmer", cost: { U: 1 }, type: "Creature — Bird",
+    pt: { power: 1, toughness: 1 }, keywords: ["Flying"], text: "Flying. When this creature enters, look at the top two cards of your library, then put them back in any order.",
+    trigger: { on: "enter", effect: "scry2" }, art: "spirit", color: "U", rarity: "common"
+  },
+  {
+    id: "b09", name: "Soul Siphon", cost: { B: 2, generic: 1 }, type: "Sorcery",
+    text: "Each opponent loses 2 life. You gain 2 life.", effect: { type: "drain", amount: 2 },
+    art: "spell_dark", color: "B", rarity: "common"
+  },
+  {
+    id: "b10", name: "Withering Curse", cost: { B: 1, generic: 1 }, type: "Instant",
+    text: "Target creature gets -2/-2 until end of turn.", effect: { type: "pump", power: -2, toughness: -2 },
+    art: "spell_dark", color: "B", rarity: "common"
+  },
+  {
+    id: "b11", name: "Bone Collector", cost: { B: 2 }, type: "Creature — Skeleton",
+    pt: { power: 2, toughness: 2 }, keywords: [], text: "When this creature dies, return it to its owner's hand at the beginning of the next end step.",
+    trigger: { on: "death", effect: "recur_self" }, art: "zombie", color: "B", rarity: "uncommon"
+  },
+  {
+    id: "r09", name: "Wildfire Bolt", cost: { R: 2 }, type: "Sorcery",
+    text: "Deal 4 damage to target creature.", effect: { type: "damage", amount: 4, target: "creature" },
+    art: "spell_fire", color: "R", rarity: "common"
+  },
+  {
+    id: "r10", name: "Raiding Party", cost: { R: 1, generic: 1 }, type: "Creature — Goblin",
+    pt: { power: 3, toughness: 1 }, keywords: ["Haste"], text: "Haste.",
+    art: "goblin", color: "R", rarity: "common"
+  },
+  {
+    id: "r11", name: "Scorched Earth Ritual", cost: { R: 3, generic: 1 }, type: "Sorcery",
+    text: "Deal 2 damage to each creature.", effect: { type: "damage_all_creatures", amount: 2 },
+    art: "spell_fire", color: "R", rarity: "uncommon"
+  },
+  {
+    id: "g09", name: "Bountiful Harvest", cost: { G: 2 }, type: "Sorcery",
+    text: "Search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+    effect: { type: "tutor_land" }, art: "spell_nature", color: "G", rarity: "common"
+  },
+  {
+    id: "g10", name: "Stalking Predator", cost: { G: 2, generic: 1 }, type: "Creature — Cat",
+    pt: { power: 3, toughness: 3 }, keywords: ["Reach"], text: "Reach.",
+    art: "beast", color: "G", rarity: "common"
+  },
+  {
+    id: "g11", name: "Titanic Growth", cost: { G: 2 }, type: "Instant",
+    text: "Target creature gets +4/+4 until end of turn.", effect: { type: "pump", power: 4, toughness: 4 },
+    art: "spell_nature", color: "G", rarity: "common"
+  },
+
+  // ---------------- ARTIFACTS (colorless) ----------------
+  {
+    id: "c01", name: "Sol Talisman", cost: { generic: 2 }, type: "Artifact",
+    text: "{T}: Add one mana of any color.", effect: { type: "mana_rock", any: true },
+    art: "artifact", color: "C", rarity: "common"
+  },
+  {
+    id: "c02", name: "Wanderer's Ledger", cost: { generic: 3 }, type: "Artifact",
+    text: "At the beginning of your end step, draw a card if you gained life this turn.",
+    trigger: { on: "end_step_conditional", effect: "draw1_if_gained_life" }, art: "artifact", color: "C", rarity: "uncommon"
+  },
+  {
+    id: "c03", name: "Ashen Sigil", cost: { generic: 1 }, type: "Artifact — Equipment",
+    text: "Equipped creature gets +2/+1. Equip {2}.", effect: { type: "equip", power: 2, toughness: 1, cost: 2 },
+    art: "artifact", color: "C", rarity: "common"
+  },
+  {
+    id: "c04", name: "Obsidian Golem", cost: { generic: 4 }, type: "Artifact Creature — Golem",
+    pt: { power: 4, toughness: 4 }, keywords: [], text: "(A construct of dark stone.)",
+    art: "artifact", color: "C", rarity: "common"
+  },
+  {
+    id: "c05", name: "Everwatch Orb", cost: { generic: 2 }, type: "Artifact",
+    text: "{T}: Add {C}. {3}, {T}: Draw a card.", effect: { type: "mana_and_draw" },
+    art: "artifact", color: "C", rarity: "uncommon"
+  },
+
+  // ---------------- GUILD DUAL LANDS ----------------
+  { id: "land_azorius", name: "Skyline Crossing", type: "Land", text: "This land enters tapped. {T}: Add {W} or {U}.", produces: ["W", "U"], entersTapped: true, art: "gate" },
+  { id: "land_dimir", name: "Undercroft Bridge", type: "Land", text: "This land enters tapped. {T}: Add {U} or {B}.", produces: ["U", "B"], entersTapped: true, art: "gate" },
+  { id: "land_rakdos", name: "Cinderpit Junction", type: "Land", text: "This land enters tapped. {T}: Add {B} or {R}.", produces: ["B", "R"], entersTapped: true, art: "gate" },
+  { id: "land_gruul", name: "Wildwood Pass", type: "Land", text: "This land enters tapped. {T}: Add {R} or {G}.", produces: ["R", "G"], entersTapped: true, art: "gate" },
+  { id: "land_selesnya", name: "Sunmeadow Path", type: "Land", text: "This land enters tapped. {T}: Add {G} or {W}.", produces: ["G", "W"], entersTapped: true, art: "gate" },
+
+  // ---------------- LANDS ----------------
+  { id: "land_w", name: "Plains", type: "Basic Land — Plains", produces: "W", art: "land_plains" },
+  { id: "land_u", name: "Island", type: "Basic Land — Island", produces: "U", art: "land_island" },
+  { id: "land_b", name: "Swamp", type: "Basic Land — Swamp", produces: "B", art: "land_swamp" },
+  { id: "land_r", name: "Mountain", type: "Basic Land — Mountain", produces: "R", art: "land_mountain" },
+  { id: "land_g", name: "Forest", type: "Basic Land — Forest", produces: "G", art: "land_forest" }
+];
+
+if (typeof module !== "undefined") module.exports = { KEYWORDS, CARDS };
+// ============================================================
+// ORIGINAL ART MODULE
+// Every illustration here is an original SVG line-drawing
+// authored for this project — not a reproduction, trace, or
+// derivative of any published Magic: The Gathering artwork.
+// Style: single-weight ink line art, tinted by card color.
+// ============================================================
+
+const COLOR_TINTS = {
+  W: "#c9a86a",
+  U: "#4a90c4",
+  B: "#7a5ea8",
+  R: "#c4553a",
+  G: "#5a9e5f",
+  multi: "#c9a227",
+  C: "#8a8a8a",
+  land_plains: "#d8c98f",
+  land_island: "#5fa3d0",
+  land_swamp: "#6b5b7a",
+  land_mountain: "#c4704a",
+  land_forest: "#4f8f5a"
+};
+
+// Each function returns inner SVG markup (paths only) for a 200x140 viewbox art box.
+// Kept intentionally simple/iconographic — a woodcut-style emblem, not a scene.
+const ART_LIBRARY = {
+  soldier: (c) => `<circle cx="100" cy="55" r="18" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M70 130 L70 90 Q100 75 130 90 L130 130" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="100" y1="90" x2="100" y2="130" stroke="${c}" stroke-width="2"/>
+    <line x1="55" y1="100" x2="70" y2="95" stroke="${c}" stroke-width="3"/>
+    <line x1="145" y1="100" x2="130" y2="95" stroke="${c}" stroke-width="3"/>`,
+  spirit: (c) => `<path d="M100 30 Q130 60 120 100 Q100 120 80 100 Q70 60 100 30 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M60 70 Q40 60 45 40" fill="none" stroke="${c}" stroke-width="2"/>
+    <path d="M140 70 Q160 60 155 40" fill="none" stroke="${c}" stroke-width="2"/>`,
+  cleric: (c) => `<circle cx="100" cy="50" r="16" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M75 130 L75 95 Q100 80 125 95 L125 130" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="100" y1="20" x2="100" y2="40" stroke="${c}" stroke-width="3"/>
+    <line x1="90" y1="30" x2="110" y2="30" stroke="${c}" stroke-width="3"/>`,
+  angel: (c) => `<path d="M100 35 L110 70 L100 120 L90 70 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M90 60 Q40 50 30 90 Q65 90 90 75" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <path d="M110 60 Q160 50 170 90 Q135 90 110 75" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <circle cx="100" cy="45" r="10" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  wizard: (c) => `<path d="M100 25 L130 100 L70 100 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <circle cx="100" cy="115" r="14" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <circle cx="100" cy="30" r="4" fill="${c}"/>`,
+  serpent: (c) => `<path d="M30 100 Q60 60 100 90 Q140 120 170 70" fill="none" stroke="${c}" stroke-width="3"/>
+    <circle cx="170" cy="65" r="6" fill="${c}"/>
+    <path d="M50 95 Q55 80 45 75" fill="none" stroke="${c}" stroke-width="2"/>`,
+  merfolk: (c) => `<circle cx="100" cy="55" r="15" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M85 75 Q100 130 60 125 Q90 105 85 75 Z" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <line x1="85" y1="80" x2="115" y2="80" stroke="${c}" stroke-width="2.5"/>`,
+  leviathan: (c) => `<path d="M20 90 Q60 40 100 90 Q140 40 180 90" fill="none" stroke="${c}" stroke-width="3.5"/>
+    <circle cx="35" cy="82" r="5" fill="${c}"/>
+    <path d="M180 85 L195 70 M180 95 L195 105" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  zombie: (c) => `<circle cx="100" cy="55" r="17" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="90" y1="50" x2="94" y2="58" stroke="${c}" stroke-width="2.5"/>
+    <line x1="110" y1="50" x2="106" y2="58" stroke="${c}" stroke-width="2.5"/>
+    <path d="M75 120 L80 90 L120 90 L125 120" fill="none" stroke="${c}" stroke-width="3"/>`,
+  bat: (c) => `<path d="M100 70 L60 30 Q70 60 55 65 Q75 75 100 70 Z" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <path d="M100 70 L140 30 Q130 60 145 65 Q125 75 100 70 Z" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <circle cx="100" cy="80" r="10" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  assassin: (c) => `<circle cx="100" cy="50" r="15" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M80 125 L85 90 L115 90 L120 125" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="120" y1="95" x2="145" y2="75" stroke="${c}" stroke-width="3"/>
+    <line x1="140" y1="70" x2="150" y2="80" stroke="${c}" stroke-width="2.5"/>`,
+  horror: (c) => `<path d="M100 30 L130 60 L120 110 L80 110 L70 60 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <circle cx="88" cy="65" r="5" fill="${c}"/>
+    <circle cx="112" cy="65" r="5" fill="${c}"/>
+    <path d="M85 90 Q100 100 115 90" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  goblin: (c) => `<path d="M100 30 Q125 45 120 70 Q110 90 90 90 Q70 90 80 70 Q75 45 100 30 Z" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <line x1="80" y1="45" x2="65" y2="30" stroke="${c}" stroke-width="2.5"/>
+    <line x1="120" y1="45" x2="135" y2="30" stroke="${c}" stroke-width="2.5"/>`,
+  drake: (c) => `<path d="M100 100 L100 50 M100 50 L60 25 M100 50 L140 25" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M100 70 Q60 65 40 90" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <path d="M100 70 Q140 65 160 90" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  warrior: (c) => `<circle cx="100" cy="45" r="15" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M78 120 L82 88 L118 88 L122 120" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="122" y1="90" x2="150" y2="60" stroke="${c}" stroke-width="3"/>
+    <line x1="78" y1="90" x2="50" y2="60" stroke="${c}" stroke-width="3"/>`,
+  giant: (c) => `<circle cx="100" cy="40" r="18" fill="none" stroke="${c}" stroke-width="3.5"/>
+    <path d="M70 125 L75 85 L125 85 L130 125" fill="none" stroke="${c}" stroke-width="3.5"/>
+    <line x1="60" y1="90" x2="75" y2="95" stroke="${c}" stroke-width="3"/>
+    <line x1="140" y1="90" x2="125" y2="95" stroke="${c}" stroke-width="3"/>`,
+  elf: (c) => `<circle cx="100" cy="50" r="14" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <line x1="88" y1="42" x2="70" y2="30" stroke="${c}" stroke-width="2"/>
+    <line x1="112" y1="42" x2="130" y2="30" stroke="${c}" stroke-width="2"/>
+    <path d="M85 110 L88 85 L112 85 L115 110" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  boar: (c) => `<ellipse cx="100" cy="80" rx="45" ry="28" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="60" y1="80" x2="40" y2="70" stroke="${c}" stroke-width="3"/>
+    <line x1="60" y1="88" x2="40" y2="95" stroke="${c}" stroke-width="3"/>
+    <line x1="70" y1="60" x2="65" y2="45" stroke="${c}" stroke-width="2.5"/>`,
+  beast: (c) => `<ellipse cx="100" cy="75" rx="50" ry="32" fill="none" stroke="${c}" stroke-width="3.5"/>
+    <path d="M60 55 L50 30 M70 50 L65 25" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <line x1="150" y1="90" x2="170" y2="110" stroke="${c}" stroke-width="3"/>`,
+  treefolk: (c) => `<path d="M100 40 Q70 55 75 90 L125 90 Q130 55 100 40 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="100" y1="90" x2="100" y2="125" stroke="${c}" stroke-width="4"/>
+    <line x1="85" y1="105" x2="70" y2="115" stroke="${c}" stroke-width="2.5"/>
+    <line x1="115" y1="105" x2="130" y2="115" stroke="${c}" stroke-width="2.5"/>`,
+  spell_light: (c) => `<path d="M100 30 L112 70 L150 70 L120 92 L132 130 L100 108 L68 130 L80 92 L50 70 L88 70 Z" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  spell_water: (c) => `<path d="M100 30 Q130 70 120 100 Q100 120 80 100 Q70 70 100 30 Z" fill="none" stroke="${c}" stroke-width="3"/>`,
+  spell_dark: (c) => `<path d="M100 30 L60 90 L100 130 L140 90 Z M100 60 L100 100 M85 75 L115 75" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  spell_fire: (c) => `<path d="M100 25 Q120 60 105 75 Q130 85 115 115 Q100 130 85 115 Q70 85 95 75 Q80 60 100 25 Z" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  spell_nature: (c) => `<path d="M100 125 L100 60 M100 60 Q75 55 70 30 M100 60 Q125 55 130 30 M100 90 Q80 88 75 70 M100 90 Q120 88 125 70" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  land_plains: (c) => `<path d="M30 110 L80 60 L100 80 L130 45 L170 110 Z" fill="none" stroke="${c}" stroke-width="2.5"/><circle cx="150" cy="40" r="10" fill="none" stroke="${c}" stroke-width="2"/>`,
+  land_island: (c) => `<path d="M20 100 Q100 70 180 100" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <path d="M20 115 Q100 90 180 115" fill="none" stroke="${c}" stroke-width="2"/>
+    <path d="M60 100 L60 60 L90 75 Z" fill="none" stroke="${c}" stroke-width="2"/>`,
+  land_swamp: (c) => `<ellipse cx="100" cy="105" rx="70" ry="15" fill="none" stroke="${c}" stroke-width="2"/>
+    <path d="M60 100 Q65 70 55 50" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <path d="M130 100 Q135 75 145 55" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  land_mountain: (c) => `<path d="M20 115 L70 50 L100 85 L120 60 L180 115 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <path d="M65 60 L75 60 L70 50 Z" fill="${c}"/>`,
+  land_forest: (c) => `<path d="M100 30 L130 75 L112 75 L140 115 L60 115 L88 75 L70 75 Z" fill="none" stroke="${c}" stroke-width="2.5"/>
+    <line x1="100" y1="115" x2="100" y2="128" stroke="${c}" stroke-width="3"/>`,
+  artifact: (c) => `<path d="M100 30 L140 55 L140 95 L100 120 L60 95 L60 55 Z" fill="none" stroke="${c}" stroke-width="3"/>
+    <circle cx="100" cy="75" r="12" fill="none" stroke="${c}" stroke-width="2.5"/>`,
+  gate: (c) => `<path d="M50 120 L50 60 Q100 25 150 60 L150 120" fill="none" stroke="${c}" stroke-width="3"/>
+    <line x1="50" y1="90" x2="150" y2="90" stroke="${c}" stroke-width="2"/>
+    <line x1="70" y1="60" x2="70" y2="120" stroke="${c}" stroke-width="2"/>
+    <line x1="130" y1="60" x2="130" y2="120" stroke="${c}" stroke-width="2"/>`
+};
+
+function renderCardArt(card) {
+  const tintKey = card.produces ? card.art : card.color;
+  const c = COLOR_TINTS[tintKey] || COLOR_TINTS[card.art] || "#8a8a8a";
+  const inner = ART_LIBRARY[card.art] ? ART_LIBRARY[card.art](c) : `<circle cx="100" cy="70" r="30" fill="none" stroke="${c}" stroke-width="3"/>`;
+  return `<svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+    <rect width="200" height="140" fill="#eee3cf"/>
+    ${inner}
+  </svg>`;
+}
+
+if (typeof module !== "undefined") module.exports = { renderCardArt, COLOR_TINTS };
+// ============================================================
+// CORE RULES ENGINE
+// Zones, turn structure, mana, the stack, combat, state-based
+// actions, and Commander-specific rules (40 life, command zone,
+// commander tax, commander damage).
+// ============================================================
+
+const PHASES = ["untap", "upkeep", "draw", "main1", "combat_begin", "declare_attackers",
+  "declare_blockers", "combat_damage_fs", "combat_damage", "combat_end", "main2", "end", "cleanup"];
+
+function manaCostTotal(cost) {
+  if (!cost) return 0;
+  return Object.values(cost).reduce((a, b) => a + b, 0);
+}
+
+function manaCostString(cost) {
+  if (!cost) return "";
+  const order = ["W", "U", "B", "R", "G", "generic"];
+  return order.filter(k => cost[k]).map(k => k === "generic" ? `{${cost[k]}}` : `{${cost[k] > 1 ? cost[k] : ""}${k}}`).join("");
+}
+
+class Player {
+  constructor(name, isBot, startingLife = 40) {
+    this.name = name;
+    this.isBot = isBot;
+    this.life = startingLife;
+    this.library = [];
+    this.hand = [];
+    this.battlefield = []; // permanents: {instanceId, card, tapped, damage, counters, summoningSick, keywordsGranted, equippedBy}
+    this.graveyard = [];
+    this.exile = [];
+    this.commandZone = []; // Commander-only: the commander card(s)
+    this.commanderTax = {}; // instanceId/cardId -> times recast from command zone
+    this.manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    this.commanderDamageTaken = {}; // sourceCommanderId -> total damage taken from that commander
+    this.hasLost = false;
+    this.lossReason = null;
+  }
+
+  colorIdentity() {
+    const ids = new Set();
+    this.commandZone.forEach(c => {
+      if (c.colorIdentity) c.colorIdentity.forEach(x => ids.add(x));
+      else if (c.color && c.color !== "multi" && c.color !== "C") ids.add(c.color);
+      if (c.cost) Object.keys(c.cost).forEach(k => { if (k !== "generic") ids.add(k); });
+    });
+    return ids;
+  }
+}
+
+class GameEngine {
+  constructor({ mode = "commander", players, log = () => {} }) {
+    this.mode = mode; // "commander" for now; more modes layer in later
+    this.players = players; // array of Player
+    this.turnIndex = 0;
+    this.phaseIndex = 0;
+    this.stack = []; // {type: 'spell'|'ability', card, controller, targets}
+    this.log = log;
+    this.turnNumber = 1;
+    this.priorityPasses = 0;
+    this.pendingBlocks = {}; // attackerInstanceId -> [blockerInstanceId,...]
+    this.attackers = []; // instanceIds declared this combat
+  }
+
+  get active() { return this.players[this.turnIndex]; }
+  get nonActive() { return this.players.filter((_, i) => i !== this.turnIndex); }
+  get phase() { return PHASES[this.phaseIndex]; }
+
+  // ---------------- Turn / Phase progression ----------------
+  nextPhase() {
+    this.phaseIndex++;
+    if (this.phaseIndex >= PHASES.length) {
+      this.phaseIndex = 0;
+      this.turnIndex = (this.turnIndex + 1) % this.players.length;
+      this.turnNumber++;
+    }
+    this.runPhaseEntry();
+  }
+
+  runPhaseEntry() {
+    const p = this.active;
+    p.manaPool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    switch (this.phase) {
+      case "untap":
+        p.battlefield.forEach(perm => { perm.tapped = false; perm.summoningSick = false; });
+        p.landsPlayedThisTurn = 0;
+        this.log(`${p.name}'s untap step.`);
+        this.nextPhase();
+        break;
+      case "upkeep":
+        this.log(`${p.name}'s upkeep.`);
+        this.fireTrigger("upkeep", p);
+        break;
+      case "draw":
+        this.drawCards(p, 1);
+        this.log(`${p.name} draws a card.`);
+        this.nextPhase();
+        break;
+      case "combat_begin":
+        this.attackers = [];
+        this.pendingBlocks = {};
+        this.nextPhase();
+        break;
+      case "combat_damage_fs":
+        this.dealCombatDamage(true);
+        this.nextPhase();
+        break;
+      case "combat_damage":
+        this.dealCombatDamage(false);
+        this.nextPhase();
+        break;
+      case "cleanup":
+        p.battlefield.forEach(perm => { perm.damage = 0; perm.tempPump = { power: 0, toughness: 0 }; });
+        this.hand?.length; // no-op placeholder
+        this.log(`End of turn ${this.turnNumber - 1}.`);
+        this.nextPhase();
+        break;
+      default:
+        // main1, declare_attackers, declare_blockers, combat_end, main2, end
+        // wait for player/bot action via explicit calls
+        break;
+    }
+    this.checkStateBasedActions();
+  }
+
+  // ---------------- Mana & Casting ----------------
+  canAffordFromPool(player, cost) {
+    const pool = { ...player.manaPool };
+    let genericNeeded = cost.generic || 0;
+    for (const color of ["W", "U", "B", "R", "G"]) {
+      const need = cost[color] || 0;
+      if (pool[color] < need) return false;
+      pool[color] -= need;
+    }
+    const leftover = Object.values(pool).reduce((a, b) => a + b, 0);
+    return leftover >= genericNeeded;
+  }
+
+  payMana(player, cost) {
+    for (const color of ["W", "U", "B", "R", "G"]) {
+      const need = cost[color] || 0;
+      player.manaPool[color] -= need;
+    }
+    let genericNeeded = cost.generic || 0;
+    for (const color of ["C", "W", "U", "B", "R", "G"]) {
+      while (genericNeeded > 0 && player.manaPool[color] > 0) {
+        player.manaPool[color]--; genericNeeded--;
+      }
+    }
+  }
+
+  tapLandForMana(player, permanent) {
+    if (permanent.tapped) return false;
+    const card = permanent.card;
+    if (!card.produces) return false;
+    permanent.tapped = true;
+    const colorList = Array.isArray(card.produces) ? card.produces : [card.produces];
+    // Simple version: dual lands add first available color; UI lets user pick if needed later
+    const chosen = colorList[0];
+    player.manaPool[chosen] = (player.manaPool[chosen] || 0) + 1;
+    this.log(`${player.name} taps ${card.name} for {${chosen}}.`);
+    return true;
+  }
+
+  // ---------------- Land drops ----------------
+  playLand(player, card) {
+    if (player !== this.active) return { ok: false, reason: "Not your turn." };
+    if (!(this.phase === "main1" || this.phase === "main2")) return { ok: false, reason: "Lands can only be played during a main phase." };
+    if ((player.landsPlayedThisTurn || 0) >= 1) return { ok: false, reason: "Already played a land this turn." };
+    player.hand = player.hand.filter(c => c !== card);
+    this.putPermanentOnBattlefield(player, card);
+    player.landsPlayedThisTurn = (player.landsPlayedThisTurn || 0) + 1;
+    this.log(`${player.name} plays ${card.name}.`);
+    return { ok: true };
+  }
+
+  // ---------------- Commander casting (command zone + tax) ----------------
+  commanderCastCost(player, card) {
+    const timesCast = player.commanderTax[card.id] || 0;
+    const base = { ...card.cost };
+    base.generic = (base.generic || 0) + timesCast * 2; // commander tax: +2 generic per prior cast from command zone
+    return base;
+  }
+
+  castFromCommandZone(player, card) {
+    const cost = this.commanderCastCost(player, card);
+    if (!this.canAffordFromPool(player, cost)) return { ok: false, reason: "Not enough mana." };
+    this.payMana(player, cost);
+    player.commandZone = player.commandZone.filter(c => c.id !== card.id);
+    player.commanderTax[card.id] = (player.commanderTax[card.id] || 0) + 1;
+    this.putPermanentOnBattlefield(player, card, { isCommander: true });
+    this.log(`${player.name} casts commander ${card.name} (tax paid: ${player.commanderTax[card.id] - 1} prior casts).`);
+    return { ok: true };
+  }
+
+  // Commander replacement rule: if a commander would go to graveyard/exile, owner may
+  // return it to the command zone instead.
+  onWouldLeaveBattlefield(player, permanent, destination) {
+    if (permanent.isCommander && (destination === "graveyard" || destination === "exile")) {
+      player.commandZone.push(permanent.card);
+      this.log(`${player.name} moves ${permanent.card.name} to the command zone instead of ${destination}.`);
+      return true; // redirected
+    }
+    return false;
+  }
+
+  // ---------------- Casting generic spells ----------------
+  putPermanentOnBattlefield(player, card, opts = {}) {
+    const perm = {
+      instanceId: `${card.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      card, tapped: false, damage: 0, counters: {}, summoningSick: !opts.isCommander ? true : true,
+      isCommander: !!opts.isCommander, keywordsGranted: [], attachedEquipment: []
+    };
+    // Haste check happens at attack-declare time via effectiveKeywords()
+    player.battlefield.push(perm);
+    this.fireTrigger("enter", player, perm);
+    return perm;
+  }
+
+  effectiveKeywords(perm) {
+    const base = perm.card.keywords || [];
+    return Array.from(new Set([...base, ...perm.keywordsGranted]));
+  }
+
+  hasKeyword(perm, kw) {
+    return this.effectiveKeywords(perm).includes(kw);
+  }
+
+  // ---------------- Static ability recalculation (anthems etc.) ----------------
+  computeStaticBonus(player, perm) {
+    let power = 0, toughness = 0;
+    player.battlefield.forEach(source => {
+      if (source.instanceId === perm.instanceId) return;
+      const st = source.card.static;
+      if (!st) return;
+      if (st.type === "anthem_power") power += st.amount;
+      if (st.type === "anthem_toughness") toughness += st.amount;
+      if (st.type === "anthem_both") { power += st.amount; toughness += st.amount; }
+    });
+    return { power, toughness };
+  }
+
+  getPT(perm, owner) {
+    const base = perm.card.pt || { power: 0, toughness: 0 };
+    const bonus = this.computeStaticBonus(owner, perm);
+    const equip = (perm.attachedEquipment || []).reduce((acc, eq) => ({
+      power: acc.power + (eq.effect?.power || 0), toughness: acc.toughness + (eq.effect?.toughness || 0)
+    }), { power: 0, toughness: 0 });
+    const temp = perm.tempPump || { power: 0, toughness: 0 };
+    return {
+      power: base.power + bonus.power + equip.power + temp.power,
+      toughness: base.toughness + bonus.toughness + equip.toughness + temp.toughness - (perm.damage || 0)
+    };
+  }
+
+  // ---------------- Combat ----------------
+  declareAttacker(player, instanceId) {
+    const perm = player.battlefield.find(p => p.instanceId === instanceId);
+    if (!perm) return { ok: false, reason: "No such permanent." };
+    if (perm.tapped && !this.hasKeyword(perm, "Vigilance")) return { ok: false, reason: "Already tapped." };
+    if (perm.summoningSick && !this.hasKeyword(perm, "Haste")) return { ok: false, reason: "Summoning sick." };
+    if (!this.hasKeyword(perm, "Vigilance")) perm.tapped = true;
+    this.attackers.push({ instanceId, controller: player, blockedBy: [] });
+    this.fireTrigger("attack", player, perm);
+    this.log(`${player.name} attacks with ${perm.card.name}.`);
+    return { ok: true };
+  }
+
+  declareBlocker(defenderPlayer, attackerInstanceId, blockerInstanceId) {
+    const atk = this.attackers.find(a => a.instanceId === attackerInstanceId);
+    if (!atk) return { ok: false, reason: "No such attacker." };
+    const attackerPerm = this.findPermanentAnywhere(attackerInstanceId);
+    const blockerPerm = defenderPlayer.battlefield.find(p => p.instanceId === blockerInstanceId);
+    if (!blockerPerm) return { ok: false, reason: "No such blocker." };
+    if (blockerPerm.tapped) return { ok: false, reason: "Blocker is tapped." };
+    if (this.hasKeyword(attackerPerm, "Flying") && !(this.hasKeyword(blockerPerm, "Flying") || this.hasKeyword(blockerPerm, "Reach"))) {
+      return { ok: false, reason: "Can't block a flying creature without flying or reach." };
+    }
+    if (this.hasKeyword(attackerPerm, "Menace") && atk.blockedBy.length === 0) {
+      // will be enforced: need at least 2 total; allow first, engine can warn UI to require a 2nd
+    }
+    atk.blockedBy.push(blockerInstanceId);
+    this.log(`${defenderPlayer.name} blocks with ${blockerPerm.card.name}.`);
+    return { ok: true };
+  }
+
+  validateBlocksAndAdvance() {
+    this.attackers.forEach(atk => {
+      const attackerPerm = this.findPermanentAnywhere(atk.instanceId);
+      if (attackerPerm && this.hasKeyword(attackerPerm, "Menace") && atk.blockedBy.length === 1) {
+        this.log(`${attackerPerm.card.name} has menace — a single blocker isn't legal, block is removed.`);
+        atk.blockedBy = [];
+      }
+    });
+    this.nextPhase();
+  }
+
+
+  findPermanentAnywhere(instanceId) {
+    for (const pl of this.players) {
+      const found = pl.battlefield.find(p => p.instanceId === instanceId);
+      if (found) return found;
+    }
+    return null;
+  }
+  ownerOf(instanceId) {
+    return this.players.find(pl => pl.battlefield.some(p => p.instanceId === instanceId));
+  }
+
+  dealCombatDamage(firstStrikePass) {
+    this.attackers.forEach(atk => {
+      const attackerPerm = this.findPermanentAnywhere(atk.instanceId);
+      if (!attackerPerm) return;
+      const attackerOwner = this.ownerOf(atk.instanceId);
+      const hasFS = this.hasKeyword(attackerPerm, "First Strike") || this.hasKeyword(attackerPerm, "Double Strike");
+      const isRegularStep = !firstStrikePass;
+      const dealsThisStep = firstStrikePass ? hasFS : (isRegularStep && (!hasFS || this.hasKeyword(attackerPerm, "Double Strike")));
+      if (!dealsThisStep) return;
+
+      const atkPT = this.getPT(attackerPerm, attackerOwner);
+      const menaceOk = !this.hasKeyword(attackerPerm, "Menace") || atk.blockedBy.length >= 2;
+
+      if (atk.blockedBy.length === 0 || !menaceOk) {
+        // unblocked -> damage to defending player(s); Commander damage tracked if this is a commander
+        const defender = this.nonActive.find(p => p !== attackerOwner) || this.nonActive[0];
+        if (defender) {
+          defender.life -= atkPT.power;
+          if (attackerPerm.isCommander) {
+            defender.commanderDamageTaken[attackerPerm.card.id] = (defender.commanderDamageTaken[attackerPerm.card.id] || 0) + atkPT.power;
+          }
+          if (this.hasKeyword(attackerPerm, "Lifelink")) attackerOwner.life += atkPT.power;
+          this.log(`${attackerPerm.card.name} deals ${atkPT.power} damage to ${defender.name}.`);
+        }
+        return;
+      }
+
+      // blocked: assign damage across blockers in order; trample spills over
+      let remaining = atkPT.power;
+      const blockers = atk.blockedBy.map(id => this.findPermanentAnywhere(id)).filter(Boolean);
+      const deathtouch = this.hasKeyword(attackerPerm, "Deathtouch");
+      blockers.forEach(blocker => {
+        const blockerOwner = this.ownerOf(blocker.instanceId);
+        const blockerPT = this.getPT(blocker, blockerOwner);
+        const lethalNeeded = deathtouch ? 1 : Math.max(0, blockerPT.toughness - (blocker.damage || 0));
+        const assign = this.hasKeyword(attackerPerm, "Trample") ? Math.min(remaining, Math.max(lethalNeeded, 0)) : Math.min(remaining, remaining);
+        const dmg = this.hasKeyword(attackerPerm, "Trample") ? Math.min(remaining, lethalNeeded === 0 ? remaining : lethalNeeded) : remaining;
+        const finalDmg = this.hasKeyword(attackerPerm, "Trample") ? Math.min(remaining, Math.max(lethalNeeded, 1)) : remaining;
+        blocker.damage = (blocker.damage || 0) + finalDmg;
+        remaining -= finalDmg;
+        if (this.hasKeyword(attackerPerm, "Lifelink")) attackerOwner.life += finalDmg;
+        this.log(`${attackerPerm.card.name} deals ${finalDmg} damage to ${blocker.card.name}.`);
+        // blocker deals damage back to attacker (only in the step it has damage for; simplified: regular step unless it has first strike)
+        const blockerHasFS = this.hasKeyword(blocker, "First Strike") || this.hasKeyword(blocker, "Double Strike");
+        const blockerDealsThisStep = firstStrikePass ? blockerHasFS : (!blockerHasFS || this.hasKeyword(blocker, "Double Strike"));
+        if (blockerDealsThisStep) {
+          attackerPerm.damage = (attackerPerm.damage || 0) + blockerPT.power;
+          if (this.hasKeyword(blocker, "Lifelink")) blockerOwner.life += blockerPT.power;
+          this.log(`${blocker.card.name} deals ${blockerPT.power} damage to ${attackerPerm.card.name}.`);
+        }
+      });
+      if (this.hasKeyword(attackerPerm, "Trample") && remaining > 0) {
+        const defender = this.nonActive.find(p => p !== attackerOwner) || this.nonActive[0];
+        if (defender) {
+          defender.life -= remaining;
+          if (attackerPerm.isCommander) {
+            defender.commanderDamageTaken[attackerPerm.card.id] = (defender.commanderDamageTaken[attackerPerm.card.id] || 0) + remaining;
+          }
+          if (this.hasKeyword(attackerPerm, "Lifelink")) attackerOwner.life += remaining;
+          this.log(`${attackerPerm.card.name} tramples ${remaining} damage over to ${defender.name}.`);
+        }
+      }
+    });
+  }
+
+  // ---------------- Stack & Priority ----------------
+  canCastSorcerySpeed(player) {
+    return player === this.active && (this.phase === "main1" || this.phase === "main2") && this.stack.length === 0;
+  }
+
+  castSpell(player, card, targets = {}) {
+    const isInstant = card.type === "Instant" || (card.keywords || []).includes("Flash");
+    if (!isInstant && !this.canCastSorcerySpeed(player)) {
+      return { ok: false, reason: "Can only cast at sorcery speed during your main phase with an empty stack." };
+    }
+    if (!this.canAffordFromPool(player, card.cost)) return { ok: false, reason: "Not enough mana." };
+    this.payMana(player, card.cost);
+    if (card.type && card.type.includes("Creature") || card.type === "Artifact" || card.type.includes("Artifact")) {
+      // permanents that aren't lands resolve immediately in this simplified model,
+      // but still go on the stack first so instant-speed responses are possible
+      this.stack.push({ type: "permanent", card, controller: player, targets });
+    } else {
+      this.stack.push({ type: "spell", card, controller: player, targets });
+    }
+    this.log(`${player.name} casts ${card.name}.`);
+    this.priorityPasses = 0;
+    return { ok: true };
+  }
+
+  passPriority(player) {
+    this.priorityPasses++;
+    if (this.priorityPasses >= this.players.length) {
+      this.priorityPasses = 0;
+      if (this.stack.length > 0) {
+        this.resolveTopOfStack();
+      } else {
+        this.nextPhase();
+      }
+    }
+  }
+
+  resolveTopOfStack() {
+    const obj = this.stack.pop();
+    if (!obj) return;
+    const { type, card, controller, targets } = obj;
+    if (type === "permanent") {
+      this.putPermanentOnBattlefield(controller, card);
+      this.log(`${card.name} enters the battlefield under ${controller.name}'s control.`);
+    } else {
+      this.resolveSpellEffect(controller, card, targets);
+    }
+    this.checkStateBasedActions();
+  }
+
+  resolveSpellEffect(controller, card, targets) {
+    const eff = card.effect;
+    if (!eff) return;
+    const opponents = this.nonActive.includes(controller) ? [this.active] : this.nonActive;
+    switch (eff.type) {
+      case "damage": {
+        const t = targets.permanent || targets.player;
+        if (t && t.life !== undefined) { t.life -= eff.amount; this.log(`${card.name} deals ${eff.amount} damage to ${t.name}.`); }
+        else if (t) { t.damage = (t.damage || 0) + eff.amount; this.log(`${card.name} deals ${eff.amount} damage to ${t.card.name}.`); }
+        break;
+      }
+      case "damage_all_creatures":
+        this.players.forEach(p => p.battlefield.forEach(perm => {
+          if (perm.card.type && perm.card.type.includes("Creature")) perm.damage = (perm.damage || 0) + eff.amount;
+        }));
+        this.log(`${card.name} deals ${eff.amount} damage to each creature.`);
+        break;
+      case "pump": {
+        const t = targets.permanent;
+        if (t) { t.keywordsGranted = t.keywordsGranted || []; t.tempPump = t.tempPump || { power: 0, toughness: 0 };
+          t.tempPump.power += eff.power; t.tempPump.toughness += eff.toughness;
+          if (eff.toughness < 0) t.damage = t.damage; // toughness reduction handled via getPT if we add tempPump there
+          this.log(`${card.name} modifies ${t.card.name} by ${eff.power}/${eff.toughness}.`); }
+        break;
+      }
+      case "team_pump":
+        controller.battlefield.forEach(perm => {
+          if (perm.card.type && perm.card.type.includes("Creature")) {
+            perm.tempPump = perm.tempPump || { power: 0, toughness: 0 };
+            perm.tempPump.power += eff.power; perm.tempPump.toughness += eff.toughness;
+          }
+        });
+        this.log(`${card.name} pumps ${controller.name}'s team by ${eff.power}/${eff.toughness}.`);
+        break;
+      case "draw":
+        this.drawCards(controller, eff.amount);
+        this.log(`${controller.name} draws ${eff.amount} card(s).`);
+        break;
+      case "bounce": case "bounce_draw": {
+        const t = targets.permanent;
+        if (t) {
+          const owner = this.ownerOf(t.instanceId);
+          owner.battlefield = owner.battlefield.filter(p => p.instanceId !== t.instanceId);
+          owner.hand.push(t.card);
+          this.log(`${t.card.name} is returned to ${owner.name}'s hand.`);
+        }
+        if (eff.type === "bounce_draw") this.drawCards(controller, 1);
+        break;
+      }
+      case "destroy": case "exile": {
+        const t = targets.permanent;
+        if (t) {
+          const owner = this.ownerOf(t.instanceId);
+          if (eff.condition === "tapped" && !t.tapped) { this.log(`${card.name} fizzles — target isn't tapped.`); break; }
+          const redirected = this.onWouldLeaveBattlefield(owner, t, eff.type === "exile" ? "exile" : "graveyard");
+          owner.battlefield = owner.battlefield.filter(p => p.instanceId !== t.instanceId);
+          if (!redirected) (eff.type === "exile" ? owner.exile : owner.graveyard).push(t.card);
+          this.log(`${t.card.name} is ${eff.type === "exile" ? "exiled" : "destroyed"}.`);
+        }
+        break;
+      }
+      case "drain":
+        opponents.forEach(o => o.life -= eff.amount);
+        controller.life += eff.amount;
+        this.log(`${card.name} drains ${eff.amount} life from each opponent.`);
+        break;
+      case "discard_all":
+        this.players.forEach(p => { for (let i = 0; i < eff.amount && p.hand.length; i++) p.graveyard.push(p.hand.pop()); });
+        this.log(`${card.name} makes each player discard ${eff.amount}.`);
+        break;
+      case "ramp": case "tutor_land": {
+        const basic = { id: `basic_${controller.name}_${Date.now()}`, name: "Basic Land", type: "Basic Land", produces: "C", art: "land_forest" };
+        if (eff.type === "ramp") this.putPermanentOnBattlefield(controller, basic);
+        else controller.hand.push(basic);
+        this.log(`${controller.name} ${eff.type === "ramp" ? "ramps" : "tutors"} a basic land.`);
+        break;
+      }
+      case "grant_keyword": {
+        const t = targets.permanent;
+        if (t) { t.keywordsGranted = t.keywordsGranted || []; t.keywordsGranted.push(eff.keyword); }
+        break;
+      }
+      case "counter_unless_pay": {
+        // simplified: just counters it (bot/opponent auto-fails to pay in this basic version)
+        const target = targets.stackObject;
+        this.log(`${card.name} counters a spell unless its controller pays {${eff.amount}}.`);
+        break;
+      }
+      case "prevent_damage":
+        break; // handled via a shield flag in a fuller version
+      default:
+        break;
+    }
+  }
+
+
+  drawCards(player, n) {
+    for (let i = 0; i < n; i++) {
+      if (player.library.length === 0) {
+        player.hasLost = true;
+        player.lossReason = "Attempted to draw from an empty library.";
+        return;
+      }
+      player.hand.push(player.library.shift());
+    }
+  }
+
+  // ---------------- Triggers (simplified registry) ----------------
+  fireTrigger(eventName, player, perm) {
+    // Source's own trigger
+    if (perm && perm.card.trigger && perm.card.trigger.on === eventName) {
+      this.resolveEffectTag(perm.card.trigger.effect, player, perm);
+    }
+    // Other permanents that trigger off this event happening to others
+    player.battlefield.forEach(other => {
+      if (other === perm) return;
+      const t = other.card.trigger;
+      if (!t) return;
+      if (eventName === "enter" && t.on === "other_enter") this.resolveEffectTag(t.effect, player, other);
+      if (eventName === "death" && t.on === "any_death") this.resolveEffectTag(t.effect, player, other);
+    });
+    if (eventName === "upkeep") {
+      player.battlefield.forEach(p => {
+        if (p.card.trigger && p.card.trigger.on === "upkeep") this.resolveEffectTag(p.card.trigger.effect, player, p);
+      });
+    }
+  }
+
+  resolveEffectTag(tag, player, perm) {
+    switch (tag) {
+      case "gain1": player.life += 1; this.log(`${player.name} gains 1 life (${perm.card.name}).`); break;
+      case "drain1": this.nonActive.forEach(o => o.life -= 1); this.log(`${perm.card.name} drains 1 life from each opponent.`); break;
+      case "drain2": this.nonActive.forEach(o => o.life -= 2); player.life += 2; break;
+      case "draw1": this.drawCards(player, 1); this.log(`${player.name} draws a card (${perm.card.name}).`); break;
+      case "ramp1": {
+        const landCard = { id: `basic_${player.name}_${Date.now()}`, name: "Basic Land", type: "Basic Land", produces: "C", art: "land_forest" };
+        this.putPermanentOnBattlefield(player, landCard); break;
+      }
+      default: break;
+    }
+  }
+
+  // ---------------- State-Based Actions ----------------
+  checkStateBasedActions() {
+    this.players.forEach(p => {
+      // creatures with lethal damage die
+      p.battlefield = p.battlefield.filter(perm => {
+        if (perm.card.type && perm.card.type.includes("Creature")) {
+          const isIndestructible = this.hasKeyword(perm, "Indestructible");
+          const rawToughness = this.basePT(perm).toughness + this.computeStaticBonus(p, perm).toughness;
+          if (!isIndestructible && perm.damage >= rawToughness && rawToughness > 0) {
+            const redirected = this.onWouldLeaveBattlefield(p, perm, "graveyard");
+            if (!redirected) {
+              p.graveyard.push(perm.card);
+              this.fireTrigger("death", p, perm);
+            }
+            this.log(`${perm.card.name} dies.`);
+            return false;
+          }
+        }
+        return true;
+      });
+      if (p.life <= 0 && !p.hasLost) { p.hasLost = true; p.lossReason = "Life total reached 0."; }
+      // Commander damage loss condition
+      Object.entries(p.commanderDamageTaken).forEach(([cmdId, dmg]) => {
+        if (dmg >= 21 && !p.hasLost) { p.hasLost = true; p.lossReason = `Took 21+ combat damage from a single commander.`; }
+      });
+    });
+  }
+
+  basePT(perm) { return perm.card.pt || { power: 0, toughness: 0 }; }
+}
+
+if (typeof module !== "undefined") module.exports = { GameEngine, Player, PHASES, manaCostTotal, manaCostString };
+// ============================================================
+// BOT AI — basic tier
+// Plays a land, casts what it can reasonably afford, attacks
+// when favorable, blocks to avoid unnecessary damage or trade up.
+// ============================================================
+
+function estimateThreat(engine, perm, owner) {
+  const pt = engine.getPT(perm, owner);
+  let score = pt.power + pt.toughness;
+  (engine.effectiveKeywords(perm) || []).forEach(k => {
+    if (["Flying", "Menace", "Trample", "Deathtouch", "Double Strike"].includes(k)) score += 2;
+  });
+  return score;
+}
+
+const BotAI = {
+  // Called during the bot's main phase(s)
+  takeMainPhaseActions(engine, bot) {
+    // 1. Play a land if one is in hand
+    const landInHand = bot.hand.find(c => c.type && c.type.includes("Land"));
+    if (landInHand) {
+      engine.playLand(bot, landInHand);
+    }
+
+    // 2. Tap all untapped lands for mana up front (simple, no held-up mana logic yet)
+    bot.battlefield.forEach(perm => {
+      if (perm.card.produces && !perm.tapped) engine.tapLandForMana(bot, perm);
+    });
+
+    // 3. Cast the highest-impact affordable spell(s) from hand, cheapest-cost creatures first is fine
+    //    for a first pass — prioritize creatures, then removal, then other spells.
+    let castSomething = true;
+    while (castSomething) {
+      castSomething = false;
+      const affordable = bot.hand
+        .filter(c => !c.type.includes("Land") && engine.canAffordFromPool(bot, c.cost))
+        .sort((a, b) => (b.pt ? b.pt.power + b.pt.toughness : 3) - (a.pt ? a.pt.power + a.pt.toughness : 3));
+      if (affordable.length > 0) {
+        const chosen = affordable[0];
+        let targets = {};
+        if (chosen.effect && ["damage", "destroy", "exile", "pump", "bounce", "bounce_draw"].includes(chosen.effect.type)) {
+          const target = pickBotTarget(engine, bot, chosen.effect);
+          if (!target) { castSomething = false; break; }
+          targets.permanent = target;
+        }
+        const res = engine.castSpell(bot, chosen, targets);
+        if (res.ok) {
+          bot.hand = bot.hand.filter(c => c !== chosen);
+          engine.resolveTopOfStack();
+          castSomething = true;
+        }
+      }
+    }
+
+    // 4. Cast commander from command zone if affordable
+    if (bot.commandZone.length > 0) {
+      const cmdCard = bot.commandZone[0];
+      const cost = engine.commanderCastCost(bot, cmdCard);
+      if (engine.canAffordFromPool(bot, cost)) {
+        engine.castFromCommandZone(bot, cmdCard);
+      }
+    }
+  },
+
+  // Called during declare_attackers when it's the bot's turn
+  declareAttacks(engine, bot) {
+    const opponents = engine.nonActive;
+    const defender = opponents[0];
+    bot.battlefield.forEach(perm => {
+      if (!perm.card.type || !perm.card.type.includes("Creature")) return;
+      if (perm.tapped || (perm.summoningSick && !engine.hasKeyword(perm, "Haste"))) return;
+      const potentialBlockers = defender.battlefield.filter(p =>
+        p.card.type && p.card.type.includes("Creature") && !p.tapped);
+      const myPT = engine.getPT(perm, bot);
+      const dangerousBlocker = potentialBlockers.find(b => {
+        const bPT = engine.getPT(b, defender);
+        return bPT.power >= myPT.toughness && bPT.toughness > myPT.power;
+      });
+      if (!dangerousBlocker || engine.hasKeyword(perm, "Flying") || engine.hasKeyword(perm, "Menace")) {
+        engine.declareAttacker(bot, perm.instanceId);
+      }
+    });
+  },
+
+  // Called during declare_blockers when a player is attacking the bot
+  declareBlocks(engine, bot) {
+    const incomingDamage = engine.attackers.reduce((sum, atk) => {
+      const perm = engine.findPermanentAnywhere(atk.instanceId);
+      return perm ? sum + engine.getPT(perm, engine.ownerOf(atk.instanceId)).power : sum;
+    }, 0);
+    const lethal = incomingDamage >= bot.life;
+
+    engine.attackers.forEach(atk => {
+      const attackerPerm = engine.findPermanentAnywhere(atk.instanceId);
+      if (!attackerPerm) return;
+      const attackerOwner = engine.ownerOf(atk.instanceId);
+      const atkPT = engine.getPT(attackerPerm, attackerOwner);
+      const availableBlockers = bot.battlefield.filter(p =>
+        p.card.type && p.card.type.includes("Creature") && !p.tapped &&
+        (!engine.hasKeyword(attackerPerm, "Flying") || engine.hasKeyword(p, "Flying") || engine.hasKeyword(p, "Reach")));
+      if (availableBlockers.length === 0) return;
+
+      const goodBlock = availableBlockers.find(b => {
+        const bPT = engine.getPT(b, bot);
+        return bPT.power >= atkPT.toughness && bPT.toughness > atkPT.power;
+      });
+      if (goodBlock) {
+        engine.declareBlocker(bot, atk.instanceId, goodBlock.instanceId);
+      } else if (lethal) {
+        const chump = availableBlockers[0];
+        engine.declareBlocker(bot, atk.instanceId, chump.instanceId);
+      }
+    });
+  }
+};
+
+function pickBotTarget(engine, bot, effect) {
+  const opponents = engine.nonActive;
+  const isRemoval = ["damage", "destroy", "exile"].includes(effect.type) || (effect.type === "pump" && effect.power < 0);
+  if (isRemoval) {
+    let best = null, bestScore = -1;
+    opponents.forEach(o => o.battlefield.forEach(perm => {
+      if (!perm.card.type || !perm.card.type.includes("Creature")) return;
+      if (effect.condition === "tapped" && !perm.tapped) return;
+      const score = estimateThreat(engine, perm, o);
+      if (score > bestScore) { bestScore = score; best = perm; }
+    }));
+    return best;
+  }
+  let best = null, bestScore = -1;
+  bot.battlefield.forEach(perm => {
+    if (!perm.card.type || !perm.card.type.includes("Creature")) return;
+    const score = estimateThreat(engine, perm, bot);
+    if (score > bestScore) { bestScore = score; best = perm; }
+  });
+  return best;
+}
+
+if (typeof module !== "undefined") module.exports = { BotAI };
+// ============================================================
+// COMMANDER DECK CONSTRUCTION
+// Enforces: exactly 100 cards including the commander, singleton
+// (no duplicate non-basic-land cards), and every card's color
+// identity must be within the commander's color identity.
+// ============================================================
+
+function cardColorIdentity(card) {
+  const ids = new Set();
+  if (card.colorIdentity) card.colorIdentity.forEach(c => ids.add(c));
+  else if (card.color && card.color !== "multi" && card.color !== "C") ids.add(card.color);
+  if (card.cost) Object.keys(card.cost).forEach(k => { if (k !== "generic") ids.add(k); });
+  if (Array.isArray(card.produces)) card.produces.forEach(c => { if (c !== "C") ids.add(c); });
+  return ids;
+}
+
+function isBasicLand(card) {
+  return card.type && card.type.startsWith("Basic Land");
+}
+
+function validateCommanderDeck(commander, deckCards) {
+  const errors = [];
+  if (!commander) { errors.push("No commander selected."); return { legal: false, errors }; }
+  if (!commander.legendary) errors.push(`${commander.name} isn't a legendary creature and can't be a commander.`);
+
+  const totalWithCommander = deckCards.length + 1;
+  if (totalWithCommander !== 100) {
+    errors.push(`Deck must be exactly 100 cards including the commander (currently ${totalWithCommander}).`);
+  }
+
+  const commanderIdentity = cardColorIdentity(commander);
+  const seen = new Map();
+  deckCards.forEach(card => {
+    const idColors = cardColorIdentity(card);
+    const outOfIdentity = [...idColors].filter(c => !commanderIdentity.has(c));
+    if (outOfIdentity.length > 0) {
+      errors.push(`${card.name} is outside your commander's color identity (${outOfIdentity.join(", ")}).`);
+    }
+    if (!isBasicLand(card)) {
+      const count = (seen.get(card.id) || 0) + 1;
+      seen.set(card.id, count);
+      if (count > 1) errors.push(`${card.name} appears more than once — Commander decks are singleton (basic lands excepted).`);
+    }
+  });
+
+  return { legal: errors.length === 0, errors };
+}
+
+// Auto-build a legal starter deck around a chosen commander from the available card pool —
+// useful for quickly getting a playable bot deck or a quick-start human deck.
+function autoBuildDeck(commander, allCards, deckSize = 99) {
+  const identity = cardColorIdentity(commander);
+  const pool = allCards.filter(c => {
+    if (c.id === commander.id) return false;
+    if (c.legendary && c.type.includes("Creature")) {
+      // allow other legends as regular cards, just not as a second commander
+    }
+    const idColors = cardColorIdentity(c);
+    return [...idColors].every(col => identity.has(col));
+  });
+
+  const nonBasics = pool.filter(c => !isBasicLand(c));
+  const basics = pool.filter(c => isBasicLand(c));
+
+  const deck = [...nonBasics]; // singleton: one of each nonbasic that fits identity
+  // pad out with basic lands matching identity to reach deckSize
+  const basicByColor = {};
+  basics.forEach(b => { basicByColor[b.produces] = b; });
+  const colorList = [...identity].filter(c => basicByColor[c]);
+  let i = 0;
+  while (deck.length < deckSize && colorList.length > 0) {
+    const color = colorList[i % colorList.length];
+    deck.push(basicByColor[color]);
+    i++;
+  }
+  return deck.slice(0, deckSize);
+}
+
+if (typeof module !== "undefined") module.exports = { validateCommanderDeck, autoBuildDeck, cardColorIdentity };
+// ============================================================
+// DECK IMPORT — Scryfall integration
+// Parses plain-text decklists (Moxfield/Archidekt/MTGO export
+// style) and fetches real card data + images live from Scryfall's
+// public API (https://scryfall.com/docs/api), which is exactly
+// the database tools like Moxfield source their card data from.
+// No card data is stored or redistributed by this app — it's
+// fetched live, at the user's request, each time a deck is loaded.
+// ============================================================
+
+function parseDecklistText(raw) {
+  const lines = raw.split("\n").map(l => l.trim());
+  const commanderNames = [];
+  const mainEntries = [];
+  let section = "main"; // main | commander | ignore
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (/^(commander)s?:?\s*$/i.test(line)) { section = "commander"; continue; }
+    if (/^(deck|mainboard|main ?deck)\s*:?\s*$/i.test(line)) { section = "main"; continue; }
+    if (/^(sideboard|maybeboard|companion)\s*:?\s*$/i.test(line)) { section = "ignore"; continue; }
+    if (section === "ignore") continue;
+
+    // Strip trailing set/collector info Moxfield-style exports often include, e.g.
+    // "1 Sol Ring (C21) 130" or "1 Sol Ring (C21)"
+    let cleaned = line.replace(/\s*\([A-Za-z0-9]{2,6}\)\s*[\w-]*\s*$/, "").trim();
+    // Also handle an explicit "Commander" tag some exports append per-line
+    cleaned = cleaned.replace(/\s*\*?CMDR\*?\s*$/i, "").trim();
+
+    const m = cleaned.match(/^(\d+)x?\s+(.+)$/i);
+    if (!m) continue;
+    const qty = parseInt(m[1], 10);
+    const name = m[2].trim();
+    if (section === "commander") commanderNames.push(name);
+    else mainEntries.push({ qty, name });
+  }
+  return { commanderNames, mainEntries };
+}
+
+async function fuzzyLookupCard(name) {
+  try {
+    const res = await fetch("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(name));
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function fetchScryfallCollection(names) {
+  const unique = Array.from(new Set(names));
+  const results = new Map();
+  const CHUNK = 75; // Scryfall's collection endpoint max per request
+  const missedNames = [];
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const chunk = unique.slice(i, i + CHUNK);
+    const res = await fetch("https://api.scryfall.com/cards/collection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiers: chunk.map(name => ({ name })) })
+    });
+    if (!res.ok) throw new Error(`Scryfall request failed (${res.status}).`);
+    const data = await res.json();
+    (data.data || []).forEach(card => results.set(card.name.toLowerCase(), card));
+    (data.not_found || []).forEach(nf => { if (nf.name) missedNames.push(nf.name); });
+    if (i + CHUNK < unique.length) await new Promise(r => setTimeout(r, 100)); // be polite to the API
+  }
+  // Fallback: Scryfall's fuzzy-name endpoint catches punctuation/typo/apostrophe-style
+  // mismatches (e.g. curly vs. straight quotes) that the exact bulk lookup misses.
+  for (const name of missedNames) {
+    const card = await fuzzyLookupCard(name);
+    if (card) results.set(name.toLowerCase(), card);
+    await new Promise(r => setTimeout(r, 80));
+  }
+  return results;
+}
+
+function parseManaCostString(str) {
+  const cost = {};
+  const syms = (str || "").match(/\{([^}]+)\}/g) || [];
+  syms.forEach(s => {
+    const sym = s.slice(1, -1);
+    if (/^\d+$/.test(sym)) { cost.generic = (cost.generic || 0) + parseInt(sym, 10); return; }
+    if (["W", "U", "B", "R", "G"].includes(sym)) { cost[sym] = (cost[sym] || 0) + 1; return; }
+    if (sym.includes("/")) {
+      const letter = sym.split("/").find(p => ["W", "U", "B", "R", "G"].includes(p));
+      if (letter) cost[letter] = (cost[letter] || 0) + 1;
+    }
+  });
+  return cost;
+}
+
+const BASIC_LAND_COLOR = { Plains: "W", Island: "U", Swamp: "B", Mountain: "R", Forest: "G", Wastes: "C" };
+
+function scryfallToInternalCard(sc, uniqueSuffix) {
+  const face = (sc.card_faces && sc.card_faces[0] && sc.card_faces[0].image_uris) ? sc.card_faces[0] : sc;
+  const imageUrl = (face.image_uris && face.image_uris.normal) || (sc.image_uris && sc.image_uris.normal) || null;
+  const typeLine = sc.type_line || "";
+  const isBasicLand = /^Basic Land/.test(typeLine);
+  const keywords = (sc.keywords || []).filter(k => !!KEYWORDS[k]);
+  const colorIdentity = sc.color_identity || [];
+  let colorTag = "C";
+  if (colorIdentity.length === 1) colorTag = colorIdentity[0];
+  else if (colorIdentity.length > 1) colorTag = "multi";
+
+  return {
+    id: `${sc.id}_${uniqueSuffix}`,
+    scryfallId: sc.id,
+    name: sc.name,
+    cost: parseManaCostString(face.mana_cost || sc.mana_cost || ""),
+    type: typeLine,
+    text: face.oracle_text || sc.oracle_text || "",
+    pt: (sc.power !== undefined && sc.toughness !== undefined)
+      ? { power: parseInt(sc.power, 10) || 0, toughness: parseInt(sc.toughness, 10) || 0 } : undefined,
+    keywords,
+    color: colorTag,
+    colorIdentity,
+    legendary: /Legendary/.test(typeLine) && /Creature/.test(typeLine),
+    produces: isBasicLand ? (BASIC_LAND_COLOR[sc.name] || "C") : undefined,
+    imageUrl,
+    imported: true
+  };
+}
+
+// Builds the full expanded card array (respecting quantities) plus a resolved
+// commander, from parsed decklist text. Throws on total Scryfall failure but
+// tolerates individual not-found cards (returns them in `notFound`).
+async function importDeckFromText(rawText) {
+  const { commanderNames, mainEntries } = parseDecklistText(rawText);
+  const allNames = [...commanderNames, ...mainEntries.map(e => e.name)];
+  if (allNames.length === 0) throw new Error("No cards recognized in that decklist.");
+
+  const collection = await fetchScryfallCollection(allNames);
+  const notFound = [];
+  let counter = 0;
+
+  function resolveOne(name) {
+    const card = collection.get(name.toLowerCase());
+    if (!card) { notFound.push(name); return null; }
+    counter++;
+    return scryfallToInternalCard(card, counter);
+  }
+
+  const commanderCards = commanderNames.map(resolveOne).filter(Boolean);
+  const deckCards = [];
+  mainEntries.forEach(({ qty, name }) => {
+    for (let i = 0; i < qty; i++) {
+      const c = resolveOne(name);
+      if (c) deckCards.push(c);
+    }
+  });
+
+  return { commanderCards, deckCards, notFound };
+}
+
+let _popularCommandersCache = null;
+
+async function fetchPopularCommanders(limit = 30) {
+  const pool = await fetchCommanderPool();
+  return pool.slice(0, limit);
+}
+
+async function fetchCommanderPool() {
+  if (_popularCommandersCache) return _popularCommandersCache;
+  const url = "https://api.scryfall.com/cards/search?q=" + encodeURIComponent("is:commander") + "&order=edhrec&unique=cards";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Scryfall search failed (HTTP ${res.status}).`);
+  const data = await res.json();
+  const raw = data.data || [];
+  const cards = [];
+  for (let i = 0; i < raw.length; i++) {
+    try {
+      cards.push(scryfallToInternalCard(raw[i], `pool${i}`));
+    } catch (e) {
+      console.warn("Skipping a commander that failed to parse:", raw[i] && raw[i].name, e);
+    }
+  }
+  if (cards.length === 0) throw new Error("Scryfall returned results but none could be parsed.");
+  _popularCommandersCache = cards;
+  return cards;
+}
+
+// ---------------- Deterministic "Daily Dozen" ----------------
+// A seeded shuffle keyed on today's date, so everyone sees the same 12
+// commanders for a given day, and a different 12 tomorrow — without
+// needing any backend of our own.
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function dateSeed(dateStr) {
+  let h = 0;
+  for (let i = 0; i < dateStr.length; i++) h = (h * 31 + dateStr.charCodeAt(i)) | 0;
+  return h;
+}
+
+async function fetchDailyDozen() {
+  const pool = await fetchCommanderPool();
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, UTC
+  const rand = mulberry32(dateSeed(todayStr));
+  const shuffled = pool.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return { date: todayStr, commanders: shuffled.slice(0, 12) };
+}
+
+// ---------------- Full real-card deck generation ----------------
+// Builds an entire ~99-card Commander deck from live Scryfall data around
+// a given commander's color identity, biased toward EDHREC popularity as
+// a rough power-level proxy. This is NOT an official Bracket calculation —
+// that requires judgment calls (game-changers, tutors, fast mana, combos)
+// that aren't something an API can certify — but popularity-sorted staples
+// within color identity tend to skew toward efficient, "upgraded" cards
+// rather than baseline precon filler.
+async function fetchByQuery(query, limit) {
+  const url = "https://api.scryfall.com/cards/search?q=" + encodeURIComponent(query) + "&order=edhrec&unique=cards";
+  const res = await fetch(url);
+  if (res.status === 404) return []; // no matches for this query — treat as empty, not an error
+  if (!res.ok) throw new Error(`Scryfall search failed (HTTP ${res.status}).`);
+  const data = await res.json();
+  return (data.data || []).slice(0, limit || (data.data || []).length);
+}
+
+function identityQueryFragment(identity) {
+  if (!identity || identity.length === 0) return "id:c";
+  return "id<=" + identity.join("");
+}
+
+const BASIC_LAND_BY_COLOR = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
+
+async function buildFullDeckForCommander(commander, deckSize = 99) {
+  const identity = (commander.colorIdentity && commander.colorIdentity.length)
+    ? commander.colorIdentity
+    : Array.from(cardColorIdentity(commander));
+  const idFrag = identityQueryFragment(identity);
+  const landCountTarget = 36;
+  const commanderName = commander.name.toLowerCase();
+
+  const [spellsRaw, nonbasicLandsRaw] = await Promise.all([
+    fetchByQuery(`f:commander ${idFrag} -t:land -is:funny`, 240),
+    fetchByQuery(`f:commander ${idFrag} t:land -is:funny -t:basic`, 40)
+  ]);
+
+  let counter = 0;
+  const spellCards = spellsRaw
+    .filter(sc => sc.name.toLowerCase() !== commanderName)
+    .map(sc => { counter++; return scryfallToInternalCard(sc, `deck${counter}`); });
+  const nonbasicLandCards = nonbasicLandsRaw.map(sc => { counter++; return scryfallToInternalCard(sc, `deck${counter}`); });
+
+  const nonbasicLandsUsed = nonbasicLandCards.slice(0, Math.min(10, nonbasicLandCards.length));
+  const nonlandTarget = Math.max(0, deckSize - landCountTarget);
+  const nonlandCards = spellCards.slice(0, nonlandTarget);
+
+  const basicNames = identity.length > 0 ? identity.map(c => BASIC_LAND_BY_COLOR[c]).filter(Boolean) : ["Wastes"];
+  const basicCollection = await fetchScryfallCollection(basicNames);
+  const basicCards = [];
+  let remainingLandSlots = deckSize - nonlandCards.length - nonbasicLandsUsed.length;
+  for (let i = 0; i < remainingLandSlots; i++) {
+    const name = basicNames[i % basicNames.length];
+    const sc = basicCollection.get(name.toLowerCase());
+    if (sc) { counter++; basicCards.push(scryfallToInternalCard(sc, `basic${counter}`)); }
+  }
+
+  let deck = [...nonlandCards, ...nonbasicLandsUsed, ...basicCards];
+  while (deck.length < deckSize && basicCollection.size > 0) {
+    const name = basicNames[deck.length % basicNames.length];
+    const sc = basicCollection.get(name.toLowerCase());
+    if (!sc) break;
+    counter++;
+    deck.push(scryfallToInternalCard(sc, `pad${counter}`));
+  }
+  return deck.slice(0, deckSize);
+}
+
+async function buildRandomBotDeck(deckSize = 99) {
+  const pool = await fetchCommanderPool();
+  const commander = pool[Math.floor(Math.random() * pool.length)];
+  const deck = await buildFullDeckForCommander(commander, deckSize);
+  return { commander, deck };
+}
+
+if (typeof module !== "undefined") module.exports = { parseDecklistText, fetchScryfallCollection, scryfallToInternalCard, importDeckFromText, fetchPopularCommanders, fetchCommanderPool, fetchDailyDozen, buildFullDeckForCommander, buildRandomBotDeck };
+// ============================================================
+// STORAGE — saved decklists
+// Prefers window.storage (Anthropic's artifact persistence API)
+// when running inside a Claude.ai artifact preview; falls back
+// to localStorage so this keeps working once downloaded as a
+// standalone file or packaged into a desktop app.
+// ============================================================
+
+function hasArtifactStorage() {
+  return typeof window !== "undefined" && !!window.storage;
+}
+
+async function loadSavedDecks() {
+  try {
+    if (hasArtifactStorage()) {
+      const res = await window.storage.get("savedDecks", false);
+      return res ? JSON.parse(res.value) : [];
+    }
+    const raw = localStorage.getItem("mtg_saved_decks");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function persistSavedDecks(decks) {
+  try {
+    if (hasArtifactStorage()) {
+      await window.storage.set("savedDecks", JSON.stringify(decks), false);
+    } else {
+      localStorage.setItem("mtg_saved_decks", JSON.stringify(decks));
+    }
+    return true;
+  } catch (e) {
+    console.error("Failed to save decks:", e);
+    return false;
+  }
+}
+
+async function saveDeck(deckMeta) {
+  const decks = await loadSavedDecks();
+  deckMeta.id = deckMeta.id || `deck_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  deckMeta.savedAt = Date.now();
+  const idx = decks.findIndex(d => d.id === deckMeta.id);
+  if (idx >= 0) decks[idx] = deckMeta; else decks.push(deckMeta);
+  await persistSavedDecks(decks);
+  return deckMeta.id;
+}
+
+async function deleteSavedDeck(id) {
+  const decks = await loadSavedDecks();
+  const next = decks.filter(d => d.id !== id);
+  await persistSavedDecks(next);
+}
+
+async function loadFavorites() {
+  try {
+    if (hasArtifactStorage()) {
+      const res = await window.storage.get("favoriteCommanders", false);
+      return res ? JSON.parse(res.value) : [];
+    }
+    const raw = localStorage.getItem("mtg_favorite_commanders");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function persistFavorites(list) {
+  try {
+    if (hasArtifactStorage()) {
+      await window.storage.set("favoriteCommanders", JSON.stringify(list), false);
+    } else {
+      localStorage.setItem("mtg_favorite_commanders", JSON.stringify(list));
+    }
+    return true;
+  } catch (e) {
+    console.error("Failed to save favorites:", e);
+    return false;
+  }
+}
+
+async function toggleFavoriteCommander(card) {
+  const list = await loadFavorites();
+  const idx = list.findIndex(c => c.scryfallId === card.scryfallId || c.id === card.id);
+  if (idx >= 0) { list.splice(idx, 1); await persistFavorites(list); return false; }
+  list.push(card); await persistFavorites(list); return true;
+}
+
+async function isFavoriteCommander(card) {
+  const list = await loadFavorites();
+  return list.some(c => c.scryfallId === card.scryfallId || c.id === card.id);
+}
+
+if (typeof module !== "undefined") module.exports = { loadSavedDecks, persistSavedDecks, saveDeck, deleteSavedDeck, hasArtifactStorage, loadFavorites, persistFavorites, toggleFavoriteCommander, isFavoriteCommander };
+// ============================================================
+// UI LAYER
+// Renders the commander-picker and the game board, and wires
+// clicks/taps to the engine's methods. No framework — plain DOM.
+// ============================================================
+
+let engine = null, human = null, bot = null;
+let selectingTarget = null; // { card, effect } while waiting for a target click
+let blockingAttackerId = null; // which attacker we're currently assigning blockers to
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function addLog(msg) {
+  const el = document.getElementById("log");
+  if (!el) return;
+  const line = document.createElement("div");
+  line.className = "log-line";
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ---------------- Screens ----------------
+function showScreen(name) {
+  document.getElementById("picker-screen").style.display = name === "picker" ? "flex" : "none";
+  document.getElementById("game-screen").style.display = name === "game" ? "flex" : "none";
+  document.getElementById("gameover-screen").style.display = name === "gameover" ? "flex" : "none";
+  document.getElementById("saveddecks-screen").style.display = name === "saveddecks" ? "flex" : "none";
+}
+
+async function renderCommanderPicker() {
+  const grid = document.getElementById("commander-grid");
+  const statusEl = document.getElementById("picker-status");
+  grid.innerHTML = "";
+  statusEl.textContent = "Loading today's dozen commanders from Scryfall…";
+  try {
+    const { date, commanders } = await fetchDailyDozen();
+    statusEl.textContent = `Today's Dozen — ${date} (a new 12 rotate in each day; deck support cards are from this project's original pool):`;
+    await renderCommanderTiles(grid, commanders);
+  } catch (err) {
+    console.error("Scryfall daily-dozen fetch failed:", err);
+    statusEl.innerHTML = `Couldn't reach Scryfall (${err.message}) — showing offline homebrew commanders instead.
+      <br><span style="opacity:0.75;">If you opened this file by double-clicking it, some browsers block network requests from local files — try running it from a local server, or check your internet connection. Open the browser console (F12) for the full error.</span>`;
+    const commanders = CARDS.filter(c => c.legendary);
+    await renderCommanderTiles(grid, commanders);
+  }
+}
+
+async function renderCommanderTiles(grid, commanders) {
+  grid.innerHTML = "";
+  const favorites = await loadFavorites();
+  commanders.forEach(c => {
+    const isFav = favorites.some(f => f.scryfallId === c.scryfallId || f.id === c.id);
+    const el = document.createElement("div");
+    el.className = "pick-card";
+    el.innerHTML = cardFaceHTML(c) + `<button class="fav-star ${isFav ? "faved" : ""}" title="Favorite">&#9733;</button>`;
+    el.querySelector(".fav-star").onclick = async (ev) => {
+      ev.stopPropagation();
+      const nowFav = await toggleFavoriteCommander(c);
+      ev.target.classList.toggle("faved", nowFav);
+    };
+    el.querySelector(".card-face").onclick = () => initGame(c);
+    grid.appendChild(el);
+  });
+}
+
+// ---------------- Card rendering ----------------
+function keywordTagsHTML(card) {
+  const kws = card.keywords || [];
+  return kws.map(k => `<span class="kw-tag" title="${(KEYWORDS[k] && KEYWORDS[k].summary) || ""}">${k}</span>`).join(" ");
+}
+
+function cardArtHTML(card) {
+  if (card.imported && card.imageUrl) {
+    return `<img src="${card.imageUrl}" alt="${card.name}" loading="lazy" />`;
+  }
+  if (card.imported) {
+    return `<div class="art-fallback">No image found</div>`;
+  }
+  return renderCardArt(card);
+}
+
+function cardFaceHTML(card, opts = {}) {
+  const colorClass = "cc-" + (card.color || (card.produces ? "land" : "C"));
+  const costStr = manaCostString(card.cost);
+  const ptStr = card.pt ? `<div class="pt-box">${card.pt.power}/${card.pt.toughness}</div>` : "";
+  const art = cardArtHTML(card);
+  const extraClass = (opts.extraClass || "") + (card.imported ? " imported-card" : "");
+  const legendMark = card.legendary ? `<span class="legend-star" title="Legendary">&#9733;</span>` : "";
+  return `
+    <div class="card-face ${colorClass} ${extraClass}">
+      <div class="card-title-row">
+        <span class="card-name">${legendMark}${card.name}</span>
+        <span class="card-cost">${costStr}</span>
+      </div>
+      <div class="card-art">${art}</div>
+      <div class="card-type">${card.type || ""}</div>
+      <div class="card-text">${card.text || ""}</div>
+      <div class="card-keywords">${keywordTagsHTML(card)}</div>
+      ${ptStr}
+    </div>`;
+}
+
+function permFaceHTML(perm, owner, opts = {}) {
+  const pt = engine.getPT(perm, owner);
+  const card = perm.card;
+  const colorClass = "cc-" + (card.color || (card.produces ? "land" : "C"));
+  const tappedClass = perm.tapped ? "tapped" : "";
+  const sickClass = perm.summoningSick && !engine.hasKeyword(perm, "Haste") ? "sick" : "";
+  const commanderClass = perm.isCommander ? "is-commander" : "";
+  const selectableClass = opts.selectable ? "selectable" : "";
+  const selectedClass = opts.selected ? "selected" : "";
+  const ptStr = card.pt ? `<div class="pt-box">${pt.power}/${pt.toughness}</div>` : "";
+  const art = cardArtHTML(card);
+  return `
+    <div class="card-face perm ${colorClass} ${tappedClass} ${sickClass} ${commanderClass} ${selectableClass} ${selectedClass} ${card.imported ? "imported-card" : ""}"
+         data-instance="${perm.instanceId}">
+      <div class="card-title-row">
+        <span class="card-name">${perm.isCommander ? '<span class="legend-star">&#9733;</span>' : ""}${card.name}</span>
+      </div>
+      <div class="card-art">${art}</div>
+      <div class="card-keywords">${keywordTagsHTML(card)}</div>
+      ${ptStr}
+    </div>`;
+}
+
+// ---------------- Loading overlay ----------------
+function showLoadingOverlay(msg) {
+  let el = document.getElementById("loading-overlay");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "loading-overlay";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<div class="loading-box"><div class="spinner"></div><div class="loading-msg">${msg}</div></div>`;
+  el.style.display = "flex";
+}
+function hideLoadingOverlay() {
+  const el = document.getElementById("loading-overlay");
+  if (el) el.style.display = "none";
+}
+
+// ---------------- Game init (built-in commander pool or Scryfall-fetched) ----------------
+async function initGame(commanderOrId) {
+  const commander = typeof commanderOrId === "string" ? CARDS.find(c => c.id === commanderOrId) : commanderOrId;
+  showLoadingOverlay(`Building a full deck around ${commander.name}…`);
+  try {
+    let deck;
+    if (commander.imported || commander.scryfallId) {
+      deck = await buildFullDeckForCommander(commander, 99);
+    } else {
+      deck = autoBuildDeck(commander, CARDS, 99); // offline homebrew commander fallback
+    }
+    await startGameWithDecks(commander, deck);
+  } catch (err) {
+    console.error("Deck build failed:", err);
+    hideLoadingOverlay();
+    alert("Couldn't build a full deck from Scryfall (" + err.message + "). Falling back to the original homebrew support pool for this game.");
+    const fallbackDeck = autoBuildDeck(commander, CARDS, 99);
+    await startGameWithDecks(commander, fallbackDeck);
+  }
+}
+
+// ---------------- Game init (imported real-card deck) ----------------
+let importedCommanderChoices = [];
+let importedDeckCards = [];
+
+async function handleImportSubmit() {
+  const text = document.getElementById("import-textarea").value;
+  const statusEl = document.getElementById("import-status");
+
+  if (/^https?:\/\//i.test(text.trim())) {
+    statusEl.innerHTML = `That looks like a link. Moxfield doesn't provide a public way for other apps to fetch a deck directly from a URL (no official API, and browsers block cross-site reads of their pages).
+      <br>Open the deck on Moxfield, use its "Export"/"View as Text" option, and paste the resulting card list here instead.`;
+    return;
+  }
+
+  statusEl.textContent = "Fetching card data from Scryfall…";
+  document.getElementById("import-start-btn").style.display = "none";
+  document.getElementById("import-commander-picker").innerHTML = "";
+  try {
+    const { commanderCards, deckCards, notFound } = await importDeckFromText(text);
+    importedDeckCards = deckCards;
+    // If the decklist had an explicit Commander section, use those. Otherwise offer
+    // every legendary creature found in the list as a candidate.
+    importedCommanderChoices = commanderCards.length > 0
+      ? commanderCards
+      : deckCards.filter(c => c.legendary);
+
+    if (importedCommanderChoices.length === 0) {
+      statusEl.textContent = "No legendary creature found to serve as a commander. " +
+        "Add a 'Commander' section to your export, or include a legendary creature in the list.";
+      return;
+    }
+
+    let msg = `Loaded ${deckCards.length + commanderCards.length} card(s) from Scryfall.`;
+    if (notFound.length) msg += ` (${notFound.length} name(s) not found: ${notFound.slice(0, 5).join(", ")}${notFound.length > 5 ? "…" : ""})`;
+    statusEl.textContent = msg;
+
+    const pickerEl = document.getElementById("import-commander-picker");
+    pickerEl.innerHTML = `<div class="zone-label">Choose your Commander</div>` +
+      `<div class="zone-row">${importedCommanderChoices.map(c => `<div class="pick-card" data-id="${c.id}">${cardFaceHTML(c)}</div>`).join("")}</div>`;
+    pickerEl.querySelectorAll(".pick-card").forEach(elm => {
+      elm.onclick = () => {
+        pickerEl.querySelectorAll(".pick-card").forEach(e => e.classList.remove("selected"));
+        elm.classList.add("selected");
+        document.getElementById("import-start-btn").style.display = "inline-block";
+        document.getElementById("import-start-btn").dataset.commanderId = elm.dataset.id;
+        document.getElementById("import-save-row").style.display = "flex";
+      };
+    });
+  } catch (err) {
+    statusEl.textContent = "Import failed: " + err.message + " (check your internet connection — this needs to reach api.scryfall.com).";
+  }
+}
+
+function startImportedGame() {
+  const btn = document.getElementById("import-start-btn");
+  const commanderId = btn.dataset.commanderId;
+  const commander = importedCommanderChoices.find(c => c.id === commanderId);
+  if (!commander) return;
+  // Remove the commander itself from the deck body if it was also listed there
+  const deckBody = importedDeckCards.filter(c => c.scryfallId !== commander.scryfallId || c !== commander);
+  const legality = validateCommanderDeck(commander, deckBody);
+  if (!legality.legal) {
+    const proceed = confirm("This deck doesn't meet strict Commander rules:\n\n" +
+      legality.errors.slice(0, 6).join("\n") +
+      "\n\nStart anyway?");
+    if (!proceed) return;
+  }
+  startGameWithDecks(commander, deckBody);
+}
+
+async function startGameWithDecks(commander, deckCards) {
+  showLoadingOverlay("Building the bot's deck for this match…");
+  let botCommander, botDeck;
+  try {
+    const result = await buildRandomBotDeck(99);
+    botCommander = result.commander;
+    botDeck = result.deck;
+  } catch (err) {
+    console.error("Bot deck build failed, falling back to homebrew:", err);
+    const otherLegends = CARDS.filter(c => c.legendary && c.id !== (commander.id || ""));
+    botCommander = otherLegends[Math.floor(Math.random() * otherLegends.length)];
+    botDeck = autoBuildDeck(botCommander, CARDS, 99);
+  }
+
+  human = new Player("You", false, 40);
+  human.commandZone.push(commander);
+  human.library = shuffle(deckCards.slice());
+
+  bot = new Player("Bot", true, 40);
+  bot.commandZone.push(botCommander);
+  bot.library = shuffle(botDeck.slice());
+
+  engine = new GameEngine({ players: [human, bot], log: addLog });
+  document.getElementById("log").innerHTML = "";
+  engine.drawCards(human, 7);
+  engine.drawCards(bot, 7);
+  engine._botBlockedThisCombat = false;
+  engine.runPhaseEntry();
+  hideLoadingOverlay();
+  showScreen("game");
+  afterStateChange();
+}
+
+// ---------------- State-change pump ----------------
+function afterStateChange() {
+  checkGameOver();
+  render();
+  maybeRunBotStep();
+  maybeRunBotBlocks();
+}
+
+function checkGameOver() {
+  const loser = engine && engine.players.find(p => p.hasLost);
+  if (loser) {
+    document.getElementById("gameover-text").textContent =
+      `${loser.name} loses — ${loser.lossReason}`;
+    showScreen("gameover");
+  }
+}
+
+function maybeRunBotStep() {
+  if (!engine || engine.players.some(p => p.hasLost)) return;
+  if (!engine.active.isBot) return;
+  const autoPhases = ["upkeep", "main1", "declare_attackers", "combat_end", "main2", "end"];
+  if (!autoPhases.includes(engine.phase)) return;
+  setTimeout(() => {
+    const p = engine.phase;
+    if (p === "main1" || p === "main2") BotAI.takeMainPhaseActions(engine, bot);
+    if (p === "declare_attackers") BotAI.declareAttacks(engine, bot);
+    engine.nextPhase();
+    afterStateChange();
+  }, 550);
+}
+
+function maybeRunBotBlocks() {
+  if (!engine || engine.players.some(p => p.hasLost)) return;
+  if (engine.phase === "declare_blockers" && engine.active === human && !engine._botBlockedThisCombat) {
+    engine._botBlockedThisCombat = true;
+    setTimeout(() => {
+      BotAI.declareBlocks(engine, bot);
+      render();
+    }, 500);
+  }
+  if (engine.phase !== "declare_blockers") {
+    engine._botBlockedThisCombat = false;
+  }
+}
+
+// ---------------- Rendering the board ----------------
+function render() {
+  if (!engine) return;
+  renderPlayerPanel("bot", bot, human);
+  renderPlayerPanel("human", human, bot);
+  renderPhaseBar();
+  renderActionButtons();
+}
+
+function renderPhaseBar() {
+  const el = document.getElementById("phase-bar");
+  const turnLabel = engine.active === human ? "Your turn" : "Bot's turn";
+  el.innerHTML = `<span class="turn-label">${turnLabel}</span><span class="phase-label">${engine.phase.replace(/_/g, " ")}</span>`;
+}
+
+function renderPlayerPanel(side, player, opponent) {
+  const cmdDamage = opponent.commandZone.concat(
+    opponent.battlefield.filter(p => p.isCommander).map(p => p.card)
+  );
+  const lifeEl = document.getElementById(side + "-life");
+  lifeEl.textContent = player.life;
+
+  const cmdZoneEl = document.getElementById(side + "-commandzone");
+  cmdZoneEl.innerHTML = player.commandZone.map(c => {
+    const cost = engine.commanderCastCost(player, c);
+    const affordable = player === human && engine.canAffordFromPool(player, cost);
+    return `<div class="cz-wrap ${affordable ? "castable" : ""}" data-cmdid="${c.id}">${cardFaceHTML(c)}<div class="cz-cost">Cast: ${manaCostString(cost)}</div></div>`;
+  }).join("");
+  if (player === human) {
+    cmdZoneEl.querySelectorAll(".cz-wrap").forEach(elm => {
+      elm.onclick = () => {
+        const card = human.commandZone.find(c => c.id === elm.dataset.cmdid);
+        const res = engine.castFromCommandZone(human, card);
+        if (!res.ok) addLog("Can't cast: " + res.reason);
+        afterStateChange();
+      };
+    });
+  }
+
+  const bfEl = document.getElementById(side + "-battlefield");
+  bfEl.innerHTML = player.battlefield.map(perm => {
+    const isAttacker = engine.attackers.find(a => a.instanceId === perm.instanceId);
+    const selectable = player === human && engine.phase === "declare_attackers" && engine.active === human &&
+      perm.card.type && perm.card.type.includes("Creature") && !perm.tapped && (!perm.summoningSick || engine.hasKeyword(perm, "Haste"));
+    const isBlockTarget = selectingTarget && perm; // handled separately below via click logic
+    return permFaceHTML(perm, player, { selectable, selected: !!isAttacker });
+  }).join("");
+
+  bfEl.querySelectorAll(".perm").forEach(elm => {
+    elm.onclick = () => onBattlefieldClick(player, elm.dataset.instance);
+  });
+
+  if (player === human) {
+    const handEl = document.getElementById("human-hand");
+    handEl.innerHTML = human.hand.map((c, idx) => {
+      const isLand = c.type && c.type.includes("Land");
+      const canPlayLand = isLand && (human.landsPlayedThisTurn || 0) < 1 && engine.active === human && (engine.phase === "main1" || engine.phase === "main2");
+      const canCast = !isLand && engine.canAffordFromPool(human, c.cost) && engine.canCastSorcerySpeed(human) || (!isLand && c.type === "Instant" && engine.canAffordFromPool(human, c.cost));
+      const cls = (canPlayLand || canCast) ? "castable" : "";
+      return `<div class="hand-card ${cls}" data-idx="${idx}">${cardFaceHTML(c)}</div>`;
+    }).join("");
+    handEl.querySelectorAll(".hand-card").forEach(elm => {
+      elm.onclick = () => onHandCardClick(parseInt(elm.dataset.idx, 10));
+    });
+
+    const manaEl = document.getElementById("human-manapool");
+    manaEl.innerHTML = Object.entries(human.manaPool).filter(([, v]) => v > 0)
+      .map(([k, v]) => `<span class="mana-pip mp-${k}">${v}${k}</span>`).join(" ") || "<span class='mana-empty'>No mana available</span>";
+  }
+}
+
+function onBattlefieldClick(owner, instanceId) {
+  const perm = engine.findPermanentAnywhere(instanceId);
+  if (!perm) return;
+
+  // Targeting mode for a spell in hand
+  if (selectingTarget && owner !== undefined) {
+    const card = selectingTarget.card;
+    const res = engine.castSpell(human, card, { permanent: perm });
+    if (res.ok) {
+      human.hand = human.hand.filter(c => c !== card);
+      engine.resolveTopOfStack();
+    } else {
+      addLog("Can't cast: " + res.reason);
+    }
+    selectingTarget = null;
+    afterStateChange();
+    return;
+  }
+
+  // Declaring attackers (your turn, declare_attackers phase, your creature)
+  if (engine.phase === "declare_attackers" && engine.active === human && owner === human) {
+    if (perm.card.type && perm.card.type.includes("Creature")) {
+      const already = engine.attackers.find(a => a.instanceId === instanceId);
+      if (!already) {
+        const res = engine.declareAttacker(human, instanceId);
+        if (!res.ok) addLog(res.reason);
+        render();
+      }
+    }
+    return;
+  }
+
+  // Declaring blockers (bot's turn, declare_blockers phase, your creature blocks an attacker)
+  if (engine.phase === "declare_blockers" && engine.active === bot) {
+    if (owner === bot) {
+      // clicking an attacking bot creature selects which attacker to block
+      const isAttacking = engine.attackers.find(a => a.instanceId === instanceId);
+      if (isAttacking) { blockingAttackerId = instanceId; addLog(`Choose a blocker for ${perm.card.name}.`); }
+      return;
+    }
+    if (owner === human && blockingAttackerId) {
+      const res = engine.declareBlocker(human, blockingAttackerId, instanceId);
+      if (!res.ok) addLog(res.reason);
+      blockingAttackerId = null;
+      render();
+    }
+    return;
+  }
+}
+
+function onHandCardClick(idx) {
+  const card = human.hand[idx];
+  if (!card) return;
+  const isLand = card.type && card.type.includes("Land");
+  if (isLand) {
+    const res = engine.playLand(human, card);
+    if (!res.ok) addLog("Can't play land: " + res.reason);
+    afterStateChange();
+    return;
+  }
+  const needsTarget = card.effect && ["damage", "destroy", "exile", "pump", "bounce", "bounce_draw"].includes(card.effect.type);
+  if (needsTarget) {
+    selectingTarget = { card };
+    addLog(`Choose a target for ${card.name}.`);
+    return;
+  }
+  const res = engine.castSpell(human, card, {});
+  if (res.ok) {
+    human.hand = human.hand.filter(c => c !== card);
+    engine.resolveTopOfStack();
+  } else {
+    addLog("Can't cast: " + res.reason);
+  }
+  afterStateChange();
+}
+
+// ---------------- Keyword Glossary ----------------
+function toggleKeywordModal(show) {
+  const modal = document.getElementById("keyword-modal");
+  if (show && modal.dataset.built !== "1") {
+    const list = document.getElementById("keyword-list");
+    list.innerHTML = Object.entries(KEYWORDS).map(([name, def]) => `
+      <div class="kw-entry">
+        <div class="kw-entry-name">${name}</div>
+        <div class="kw-entry-rule">${def.rule}</div>
+      </div>`).join("");
+    modal.dataset.built = "1";
+  }
+  modal.style.display = show ? "flex" : "none";
+}
+
+// ---------------- Saved Decks (Moxfield-style) ----------------
+async function renderSavedDecksScreen() {
+  await renderSavedDeckTiles();
+  await renderFavoriteTiles();
+}
+
+async function renderSavedDeckTiles() {
+  const grid = document.getElementById("saved-decks-grid");
+  const decks = await loadSavedDecks();
+  if (decks.length === 0) {
+    grid.innerHTML = `<p class="empty-msg">No saved decks yet. Import a decklist and save it to see it here.</p>`;
+    return;
+  }
+  grid.innerHTML = decks.map(d => {
+    const identityPips = (d.colorIdentity || []).map(c => `<span class="id-pip pip-${c}">${c}</span>`).join("");
+    const bannerImg = d.commanderImage ? `<img src="${d.commanderImage}" alt="${d.commanderName}"/>` : "";
+    return `
+      <div class="deck-tile" data-id="${d.id}">
+        <div class="deck-banner">${bannerImg}</div>
+        <div class="deck-tile-body">
+          <div class="deck-tile-name">${d.name}</div>
+          <div class="deck-tile-commander">${d.commanderName}</div>
+          <div class="deck-tile-pips">${identityPips}</div>
+          <div class="deck-tile-meta">${d.deckCards.length + 1} cards</div>
+          <div class="deck-tile-actions">
+            <button class="deck-play-btn" data-id="${d.id}">Play</button>
+            <button class="deck-delete-btn" data-id="${d.id}">Delete</button>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  grid.querySelectorAll(".deck-play-btn").forEach(btn => {
+    btn.onclick = async () => {
+      const decks = await loadSavedDecks();
+      const d = decks.find(x => x.id === btn.dataset.id);
+      if (d) startGameWithDecks(d.commanderCard, d.deckCards.slice());
+    };
+  });
+  grid.querySelectorAll(".deck-delete-btn").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this saved deck?")) return;
+      await deleteSavedDeck(btn.dataset.id);
+      renderSavedDecksScreen();
+    };
+  });
+}
+
+async function renderFavoriteTiles() {
+  const grid = document.getElementById("favorites-grid");
+  const favorites = await loadFavorites();
+  if (favorites.length === 0) {
+    grid.innerHTML = `<p class="empty-msg">No favorited commanders yet. Star one from the commander picker or Today's Dozen.</p>`;
+    return;
+  }
+  grid.innerHTML = favorites.map(c => `<div class="pick-card" data-id="${c.id}">${cardFaceHTML(c)}
+      <button class="fav-star faved" title="Remove favorite">&#9733;</button></div>`).join("");
+  grid.querySelectorAll(".pick-card").forEach(el => {
+    const card = favorites.find(c => c.id === el.dataset.id);
+    el.querySelector(".card-face").onclick = () => initGame(card);
+    el.querySelector(".fav-star").onclick = async (ev) => {
+      ev.stopPropagation();
+      await toggleFavoriteCommander(card);
+      renderFavoriteTiles();
+    };
+  });
+}
+
+function showSavedDecksScreen() {
+  showScreen("saveddecks");
+  renderSavedDecksScreen();
+}
+
+async function handleSaveImportedDeck() {
+  const nameInput = document.getElementById("save-deck-name");
+  const name = nameInput.value.trim();
+  if (!name) { alert("Give your deck a name first."); return; }
+  const btn = document.getElementById("import-start-btn");
+  const commanderId = btn.dataset.commanderId;
+  const commander = importedCommanderChoices.find(c => c.id === commanderId);
+  if (!commander) { alert("Pick a commander first."); return; }
+  const deckBody = importedDeckCards.filter(c => c !== commander);
+  await saveDeck({
+    name,
+    commanderName: commander.name,
+    commanderImage: commander.imageUrl || null,
+    colorIdentity: commander.colorIdentity || [],
+    commanderCard: commander,
+    deckCards: deckBody
+  });
+  document.getElementById("import-status").textContent = `Saved "${name}" to My Decks.`;
+  nameInput.value = "";
+}
+function renderActionButtons() {
+  const el = document.getElementById("action-buttons");
+  if (engine.players.some(p => p.hasLost)) { el.innerHTML = ""; return; }
+  if (engine.active !== human) {
+    el.innerHTML = `<button disabled>Bot is acting…</button>`;
+    return;
+  }
+  let label = "Next";
+  let handler = () => { engine.nextPhase(); afterStateChange(); };
+  if (engine.phase === "declare_attackers") {
+    label = "Confirm Attackers";
+  } else if (engine.phase === "declare_blockers") {
+    label = "Confirm Blocks";
+    handler = () => { engine.validateBlocksAndAdvance(); afterStateChange(); };
+  }
+  el.innerHTML = `<button id="next-btn">${label}</button>`;
+  document.getElementById("next-btn").onclick = handler;
+}
+
+function restartGame() {
+  engine = null; human = null; bot = null; selectingTarget = null; blockingAttackerId = null;
+  showScreen("picker");
+  renderCommanderPicker();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  renderCommanderPicker();
+  showScreen("picker");
+});
+</script>
+</body>
+</html>
